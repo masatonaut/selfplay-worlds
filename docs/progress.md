@@ -1,6 +1,6 @@
 # Progress
 
-_Last updated: 2026-09-24, end of Milestone 1 (first complete pass). Nothing is committed yet._
+_Last updated: 2026-09-24, after Milestone 1. Milestone 1 is committed (7 commits) and pushed to `main` of the private GitHub repository `masatonaut/selfplay-worlds`._
 
 ## DONE
 - Core framework: `GameEnv`, `Interaction` (4 modes), `Runner`, `AgentOutput`, `EpisodeLogger`, trace printer.
@@ -12,15 +12,16 @@ _Last updated: 2026-09-24, end of Milestone 1 (first complete pass). Nothing is 
 - Tests: rules, legality, observations, runner, logging, LLM path, fixtures, and 500 random and scripted games with invariant checks.
 - CARC: setup guide written from CARC's public docs; check script; example Slurm proxy (`docs/carc-setup.md`).
 - Docs: README, architecture, design decisions, game matrix, references, roadmap, meeting demo.
+- GitHub: private repository `masatonaut/selfplay-worlds`; Milestone 1 pushed to `main` in 7 commits.
+- Checked on 2026-09-24 (on a Mac): tests pass (122 passed and 1 skipped without extras, 123 passed with `--extra llm`); the Coup demo runs.
 
 ## IN PROGRESS
-- Nothing. Waiting for review and the owner's commits.
+- Nothing. Next is running the project on CARC.
 
 ## NEXT
-1. Owner: review, commit, create the private GitHub repository and push (commands in the final report).
-2. CARC first login: run `scripts/carc/check_environment.sh` on a login node and on a compute node; fill in the checklist in `docs/carc-setup.md`.
-3. First real-model run through OpenRouter, a few games, to see invalid-output rates and cost.
-4. Milestone 2: pick the second game (Sheriff or Deception) and verify its rules.
+1. CARC first login: clone the repository, then on a compute node run `uv sync`, `uv run pytest`, the Coup demo and `scripts/carc/check_environment.sh`; fill in the checklist in `docs/carc-setup.md`.
+2. First real-model run through OpenRouter, a few games, to see invalid-output rates and cost.
+3. Milestone 2: pick the second game (Sheriff or Deception) and verify its rules.
 
 ## OPEN QUESTIONS
 - Which second game fits the research question better: Sheriff (negotiation) or Deception (discussion, roles)?
