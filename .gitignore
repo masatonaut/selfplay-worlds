@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Local episode runs (the committed sample lives in examples/output/)
+runs/
+
+# Secrets and local config
+.env
+.env.*
+!.env.example
+*.local.yaml
+.claude/settings.local.json
+
+# OS / editor
+.DS_Store
+.vscode/
