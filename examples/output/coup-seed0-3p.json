@@ -1,0 +1,3188 @@
+{
+  "schema_version": "1.0",
+  "game": "coup",
+  "episode_id": "coup-seed0-3p",
+  "created_at": "2026-09-25T04:07:54+00:00",
+  "seed": 0,
+  "config": {
+    "env": {
+      "num_players": 3,
+      "names": [
+        "Alice",
+        "Bob",
+        "Carol"
+      ],
+      "starting_player": "p2",
+      "fixed_initial_hands": false,
+      "fixed_initial_coins": false,
+      "max_turns": 100
+    },
+    "runner": {
+      "order_policy": "env_order",
+      "max_retries": 2,
+      "skip_forced_moves": true
+    },
+    "include_full_state": false
+  },
+  "players": [
+    {
+      "id": "p0",
+      "name": "Alice",
+      "agent": {
+        "type": "ScriptedAgent",
+        "policy": "heuristic_policy",
+        "model": null,
+        "backend": null
+      }
+    },
+    {
+      "id": "p1",
+      "name": "Bob",
+      "agent": {
+        "type": "ScriptedAgent",
+        "policy": "heuristic_policy",
+        "model": null,
+        "backend": null
+      }
+    },
+    {
+      "id": "p2",
+      "name": "Carol",
+      "agent": {
+        "type": "ScriptedAgent",
+        "policy": "heuristic_policy",
+        "model": null,
+        "backend": null
+      }
+    }
+  ],
+  "initial_state": {
+    "public": {
+      "turn": 1,
+      "current_player": "p2",
+      "phase": "action",
+      "players": [
+        {
+          "id": "p0",
+          "name": "Alice",
+          "coins": 2,
+          "alive": true,
+          "hidden_card_count": 2,
+          "revealed_cards": []
+        },
+        {
+          "id": "p1",
+          "name": "Bob",
+          "coins": 2,
+          "alive": true,
+          "hidden_card_count": 2,
+          "revealed_cards": []
+        },
+        {
+          "id": "p2",
+          "name": "Carol",
+          "coins": 2,
+          "alive": true,
+          "hidden_card_count": 2,
+          "revealed_cards": []
+        }
+      ],
+      "deck_size": 9,
+      "pending_action": null
+    },
+    "full_state": null
+  },
+  "events": [
+    {
+      "index": 0,
+      "kind": "step",
+      "interaction": {
+        "id": 1,
+        "phase": "action",
+        "mode": "single",
+        "eligible_players": [
+          "p2"
+        ],
+        "message_policy": "optional",
+        "description": "Carol's turn: choose one action."
+      },
+      "actor": "p2",
+      "player_observation": {
+        "game": "coup",
+        "you": "p2",
+        "your_name": "Carol",
+        "your_cards": [
+          "duke",
+          "assassin"
+        ],
+        "your_coins": 2,
+        "turn": 1,
+        "current_player": "p2",
+        "phase": "action",
+        "players": [
+          {
+            "id": "p0",
+            "name": "Alice",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          },
+          {
+            "id": "p1",
+            "name": "Bob",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          },
+          {
+            "id": "p2",
+            "name": "Carol",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          }
+        ],
+        "deck_size": 9,
+        "pending_action": null,
+        "history_length": 2
+      },
+      "output": {
+        "message": null,
+        "action": {
+          "type": "tax"
+        },
+        "raw_model_output": null,
+        "metadata": {}
+      },
+      "auto": false,
+      "fallback": false,
+      "attempt": 1,
+      "accepted": true,
+      "error": null,
+      "public_events": [
+        "Carol claims the Duke and takes Tax."
+      ]
+    },
+    {
+      "index": 1,
+      "kind": "step",
+      "interaction": {
+        "id": 2,
+        "phase": "challenge_action",
+        "mode": "response_window",
+        "eligible_players": [
+          "p0",
+          "p1"
+        ],
+        "message_policy": "optional",
+        "description": "Carol claims the Duke (tax). Anyone may challenge."
+      },
+      "actor": "p0",
+      "player_observation": {
+        "game": "coup",
+        "you": "p0",
+        "your_name": "Alice",
+        "your_cards": [
+          "contessa",
+          "captain"
+        ],
+        "your_coins": 2,
+        "turn": 1,
+        "current_player": "p2",
+        "phase": "challenge_action",
+        "players": [
+          {
+            "id": "p0",
+            "name": "Alice",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          },
+          {
+            "id": "p1",
+            "name": "Bob",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          },
+          {
+            "id": "p2",
+            "name": "Carol",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          }
+        ],
+        "deck_size": 9,
+        "pending_action": {
+          "actor": "p2",
+          "action": "tax",
+          "target": null,
+          "claim": "duke",
+          "blocker": null,
+          "block_claim": null
+        },
+        "history_length": 3
+      },
+      "output": {
+        "message": null,
+        "action": {
+          "type": "pass"
+        },
+        "raw_model_output": null,
+        "metadata": {}
+      },
+      "auto": false,
+      "fallback": false,
+      "attempt": 1,
+      "accepted": true,
+      "error": null,
+      "public_events": [
+        "Alice passes."
+      ]
+    },
+    {
+      "index": 2,
+      "kind": "step",
+      "interaction": {
+        "id": 2,
+        "phase": "challenge_action",
+        "mode": "response_window",
+        "eligible_players": [
+          "p1"
+        ],
+        "message_policy": "optional",
+        "description": "Carol claims the Duke (tax). Anyone may challenge."
+      },
+      "actor": "p1",
+      "player_observation": {
+        "game": "coup",
+        "you": "p1",
+        "your_name": "Bob",
+        "your_cards": [
+          "contessa",
+          "contessa"
+        ],
+        "your_coins": 2,
+        "turn": 1,
+        "current_player": "p2",
+        "phase": "challenge_action",
+        "players": [
+          {
+            "id": "p0",
+            "name": "Alice",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          },
+          {
+            "id": "p1",
+            "name": "Bob",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          },
+          {
+            "id": "p2",
+            "name": "Carol",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          }
+        ],
+        "deck_size": 9,
+        "pending_action": {
+          "actor": "p2",
+          "action": "tax",
+          "target": null,
+          "claim": "duke",
+          "blocker": null,
+          "block_claim": null
+        },
+        "history_length": 4
+      },
+      "output": {
+        "message": null,
+        "action": {
+          "type": "challenge"
+        },
+        "raw_model_output": null,
+        "metadata": {}
+      },
+      "auto": false,
+      "fallback": false,
+      "attempt": 1,
+      "accepted": true,
+      "error": null,
+      "public_events": [
+        "Bob challenges Carol's claim to be the Duke.",
+        "Carol reveals the Duke, shuffles it back and draws a new card. Bob loses the challenge."
+      ]
+    },
+    {
+      "index": 3,
+      "kind": "step",
+      "interaction": {
+        "id": 3,
+        "phase": "lose_influence",
+        "mode": "single",
+        "eligible_players": [
+          "p1"
+        ],
+        "message_policy": "optional",
+        "description": "Bob must reveal one card (lost a challenge)."
+      },
+      "actor": "p1",
+      "player_observation": {
+        "game": "coup",
+        "you": "p1",
+        "your_name": "Bob",
+        "your_cards": [
+          "contessa",
+          "contessa"
+        ],
+        "your_coins": 2,
+        "turn": 1,
+        "current_player": "p2",
+        "phase": "lose_influence",
+        "players": [
+          {
+            "id": "p0",
+            "name": "Alice",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          },
+          {
+            "id": "p1",
+            "name": "Bob",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          },
+          {
+            "id": "p2",
+            "name": "Carol",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          }
+        ],
+        "deck_size": 9,
+        "pending_action": {
+          "actor": "p2",
+          "action": "tax",
+          "target": null,
+          "claim": "duke",
+          "blocker": null,
+          "block_claim": null
+        },
+        "history_length": 6
+      },
+      "output": {
+        "message": null,
+        "action": {
+          "type": "reveal",
+          "card": "contessa"
+        },
+        "raw_model_output": null,
+        "metadata": {
+          "auto": true
+        }
+      },
+      "auto": true,
+      "fallback": false,
+      "attempt": 1,
+      "accepted": true,
+      "error": null,
+      "public_events": [
+        "Bob loses an influence (lost a challenge) and reveals the Contessa.",
+        "Carol now has 5 coins.",
+        "Turn 2: Alice (2 coins)"
+      ]
+    },
+    {
+      "index": 4,
+      "kind": "step",
+      "interaction": {
+        "id": 4,
+        "phase": "action",
+        "mode": "single",
+        "eligible_players": [
+          "p0"
+        ],
+        "message_policy": "optional",
+        "description": "Alice's turn: choose one action."
+      },
+      "actor": "p0",
+      "player_observation": {
+        "game": "coup",
+        "you": "p0",
+        "your_name": "Alice",
+        "your_cards": [
+          "contessa",
+          "captain"
+        ],
+        "your_coins": 2,
+        "turn": 2,
+        "current_player": "p0",
+        "phase": "action",
+        "players": [
+          {
+            "id": "p0",
+            "name": "Alice",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          },
+          {
+            "id": "p1",
+            "name": "Bob",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "contessa"
+            ]
+          },
+          {
+            "id": "p2",
+            "name": "Carol",
+            "coins": 5,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          }
+        ],
+        "deck_size": 9,
+        "pending_action": null,
+        "history_length": 9
+      },
+      "output": {
+        "message": null,
+        "action": {
+          "type": "steal",
+          "target": "p2"
+        },
+        "raw_model_output": null,
+        "metadata": {}
+      },
+      "auto": false,
+      "fallback": false,
+      "attempt": 1,
+      "accepted": true,
+      "error": null,
+      "public_events": [
+        "Alice claims the Captain and tries to steal from Carol."
+      ]
+    },
+    {
+      "index": 5,
+      "kind": "step",
+      "interaction": {
+        "id": 5,
+        "phase": "challenge_action",
+        "mode": "response_window",
+        "eligible_players": [
+          "p1",
+          "p2"
+        ],
+        "message_policy": "optional",
+        "description": "Alice claims the Captain (steal). Anyone may challenge."
+      },
+      "actor": "p1",
+      "player_observation": {
+        "game": "coup",
+        "you": "p1",
+        "your_name": "Bob",
+        "your_cards": [
+          "contessa"
+        ],
+        "your_coins": 2,
+        "turn": 2,
+        "current_player": "p0",
+        "phase": "challenge_action",
+        "players": [
+          {
+            "id": "p0",
+            "name": "Alice",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          },
+          {
+            "id": "p1",
+            "name": "Bob",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "contessa"
+            ]
+          },
+          {
+            "id": "p2",
+            "name": "Carol",
+            "coins": 5,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          }
+        ],
+        "deck_size": 9,
+        "pending_action": {
+          "actor": "p0",
+          "action": "steal",
+          "target": "p2",
+          "claim": "captain",
+          "blocker": null,
+          "block_claim": null
+        },
+        "history_length": 10
+      },
+      "output": {
+        "message": null,
+        "action": {
+          "type": "pass"
+        },
+        "raw_model_output": null,
+        "metadata": {}
+      },
+      "auto": false,
+      "fallback": false,
+      "attempt": 1,
+      "accepted": true,
+      "error": null,
+      "public_events": [
+        "Bob passes."
+      ]
+    },
+    {
+      "index": 6,
+      "kind": "step",
+      "interaction": {
+        "id": 5,
+        "phase": "challenge_action",
+        "mode": "response_window",
+        "eligible_players": [
+          "p2"
+        ],
+        "message_policy": "optional",
+        "description": "Alice claims the Captain (steal). Anyone may challenge."
+      },
+      "actor": "p2",
+      "player_observation": {
+        "game": "coup",
+        "you": "p2",
+        "your_name": "Carol",
+        "your_cards": [
+          "assassin",
+          "ambassador"
+        ],
+        "your_coins": 5,
+        "turn": 2,
+        "current_player": "p0",
+        "phase": "challenge_action",
+        "players": [
+          {
+            "id": "p0",
+            "name": "Alice",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          },
+          {
+            "id": "p1",
+            "name": "Bob",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "contessa"
+            ]
+          },
+          {
+            "id": "p2",
+            "name": "Carol",
+            "coins": 5,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          }
+        ],
+        "deck_size": 9,
+        "pending_action": {
+          "actor": "p0",
+          "action": "steal",
+          "target": "p2",
+          "claim": "captain",
+          "blocker": null,
+          "block_claim": null
+        },
+        "history_length": 11
+      },
+      "output": {
+        "message": null,
+        "action": {
+          "type": "pass"
+        },
+        "raw_model_output": null,
+        "metadata": {}
+      },
+      "auto": false,
+      "fallback": false,
+      "attempt": 1,
+      "accepted": true,
+      "error": null,
+      "public_events": [
+        "Carol passes."
+      ]
+    },
+    {
+      "index": 7,
+      "kind": "step",
+      "interaction": {
+        "id": 6,
+        "phase": "block_action",
+        "mode": "response_window",
+        "eligible_players": [
+          "p2"
+        ],
+        "message_policy": "optional",
+        "description": "Alice's steal may be blocked with the Captain or the Ambassador."
+      },
+      "actor": "p2",
+      "player_observation": {
+        "game": "coup",
+        "you": "p2",
+        "your_name": "Carol",
+        "your_cards": [
+          "assassin",
+          "ambassador"
+        ],
+        "your_coins": 5,
+        "turn": 2,
+        "current_player": "p0",
+        "phase": "block_action",
+        "players": [
+          {
+            "id": "p0",
+            "name": "Alice",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          },
+          {
+            "id": "p1",
+            "name": "Bob",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "contessa"
+            ]
+          },
+          {
+            "id": "p2",
+            "name": "Carol",
+            "coins": 5,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          }
+        ],
+        "deck_size": 9,
+        "pending_action": {
+          "actor": "p0",
+          "action": "steal",
+          "target": "p2",
+          "claim": "captain",
+          "blocker": null,
+          "block_claim": null
+        },
+        "history_length": 12
+      },
+      "output": {
+        "message": null,
+        "action": {
+          "type": "block",
+          "claim": "ambassador"
+        },
+        "raw_model_output": null,
+        "metadata": {}
+      },
+      "auto": false,
+      "fallback": false,
+      "attempt": 1,
+      "accepted": true,
+      "error": null,
+      "public_events": [
+        "Carol claims the Ambassador to block."
+      ]
+    },
+    {
+      "index": 8,
+      "kind": "step",
+      "interaction": {
+        "id": 7,
+        "phase": "challenge_block",
+        "mode": "response_window",
+        "eligible_players": [
+          "p0",
+          "p1"
+        ],
+        "message_policy": "optional",
+        "description": "Carol claims the Ambassador to block. Anyone may challenge."
+      },
+      "actor": "p0",
+      "player_observation": {
+        "game": "coup",
+        "you": "p0",
+        "your_name": "Alice",
+        "your_cards": [
+          "contessa",
+          "captain"
+        ],
+        "your_coins": 2,
+        "turn": 2,
+        "current_player": "p0",
+        "phase": "challenge_block",
+        "players": [
+          {
+            "id": "p0",
+            "name": "Alice",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          },
+          {
+            "id": "p1",
+            "name": "Bob",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "contessa"
+            ]
+          },
+          {
+            "id": "p2",
+            "name": "Carol",
+            "coins": 5,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          }
+        ],
+        "deck_size": 9,
+        "pending_action": {
+          "actor": "p0",
+          "action": "steal",
+          "target": "p2",
+          "claim": "captain",
+          "blocker": "p2",
+          "block_claim": "ambassador"
+        },
+        "history_length": 13
+      },
+      "output": {
+        "message": null,
+        "action": {
+          "type": "pass"
+        },
+        "raw_model_output": null,
+        "metadata": {}
+      },
+      "auto": false,
+      "fallback": false,
+      "attempt": 1,
+      "accepted": true,
+      "error": null,
+      "public_events": [
+        "Alice passes."
+      ]
+    },
+    {
+      "index": 9,
+      "kind": "step",
+      "interaction": {
+        "id": 7,
+        "phase": "challenge_block",
+        "mode": "response_window",
+        "eligible_players": [
+          "p1"
+        ],
+        "message_policy": "optional",
+        "description": "Carol claims the Ambassador to block. Anyone may challenge."
+      },
+      "actor": "p1",
+      "player_observation": {
+        "game": "coup",
+        "you": "p1",
+        "your_name": "Bob",
+        "your_cards": [
+          "contessa"
+        ],
+        "your_coins": 2,
+        "turn": 2,
+        "current_player": "p0",
+        "phase": "challenge_block",
+        "players": [
+          {
+            "id": "p0",
+            "name": "Alice",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          },
+          {
+            "id": "p1",
+            "name": "Bob",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "contessa"
+            ]
+          },
+          {
+            "id": "p2",
+            "name": "Carol",
+            "coins": 5,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          }
+        ],
+        "deck_size": 9,
+        "pending_action": {
+          "actor": "p0",
+          "action": "steal",
+          "target": "p2",
+          "claim": "captain",
+          "blocker": "p2",
+          "block_claim": "ambassador"
+        },
+        "history_length": 14
+      },
+      "output": {
+        "message": null,
+        "action": {
+          "type": "pass"
+        },
+        "raw_model_output": null,
+        "metadata": {}
+      },
+      "auto": false,
+      "fallback": false,
+      "attempt": 1,
+      "accepted": true,
+      "error": null,
+      "public_events": [
+        "Bob passes.",
+        "The block stands. Alice's steal fails.",
+        "Turn 3: Bob (2 coins)"
+      ]
+    },
+    {
+      "index": 10,
+      "kind": "step",
+      "interaction": {
+        "id": 8,
+        "phase": "action",
+        "mode": "single",
+        "eligible_players": [
+          "p1"
+        ],
+        "message_policy": "optional",
+        "description": "Bob's turn: choose one action."
+      },
+      "actor": "p1",
+      "player_observation": {
+        "game": "coup",
+        "you": "p1",
+        "your_name": "Bob",
+        "your_cards": [
+          "contessa"
+        ],
+        "your_coins": 2,
+        "turn": 3,
+        "current_player": "p1",
+        "phase": "action",
+        "players": [
+          {
+            "id": "p0",
+            "name": "Alice",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          },
+          {
+            "id": "p1",
+            "name": "Bob",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "contessa"
+            ]
+          },
+          {
+            "id": "p2",
+            "name": "Carol",
+            "coins": 5,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          }
+        ],
+        "deck_size": 9,
+        "pending_action": null,
+        "history_length": 17
+      },
+      "output": {
+        "message": null,
+        "action": {
+          "type": "foreign_aid"
+        },
+        "raw_model_output": null,
+        "metadata": {}
+      },
+      "auto": false,
+      "fallback": false,
+      "attempt": 1,
+      "accepted": true,
+      "error": null,
+      "public_events": [
+        "Bob asks for Foreign Aid."
+      ]
+    },
+    {
+      "index": 11,
+      "kind": "step",
+      "interaction": {
+        "id": 9,
+        "phase": "block_action",
+        "mode": "response_window",
+        "eligible_players": [
+          "p2",
+          "p0"
+        ],
+        "message_policy": "optional",
+        "description": "Bob's foreign_aid may be blocked with the Duke."
+      },
+      "actor": "p2",
+      "player_observation": {
+        "game": "coup",
+        "you": "p2",
+        "your_name": "Carol",
+        "your_cards": [
+          "assassin",
+          "ambassador"
+        ],
+        "your_coins": 5,
+        "turn": 3,
+        "current_player": "p1",
+        "phase": "block_action",
+        "players": [
+          {
+            "id": "p0",
+            "name": "Alice",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          },
+          {
+            "id": "p1",
+            "name": "Bob",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "contessa"
+            ]
+          },
+          {
+            "id": "p2",
+            "name": "Carol",
+            "coins": 5,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          }
+        ],
+        "deck_size": 9,
+        "pending_action": {
+          "actor": "p1",
+          "action": "foreign_aid",
+          "target": null,
+          "claim": null,
+          "blocker": null,
+          "block_claim": null
+        },
+        "history_length": 18
+      },
+      "output": {
+        "message": null,
+        "action": {
+          "type": "pass"
+        },
+        "raw_model_output": null,
+        "metadata": {}
+      },
+      "auto": false,
+      "fallback": false,
+      "attempt": 1,
+      "accepted": true,
+      "error": null,
+      "public_events": [
+        "Carol does not block."
+      ]
+    },
+    {
+      "index": 12,
+      "kind": "step",
+      "interaction": {
+        "id": 9,
+        "phase": "block_action",
+        "mode": "response_window",
+        "eligible_players": [
+          "p0"
+        ],
+        "message_policy": "optional",
+        "description": "Bob's foreign_aid may be blocked with the Duke."
+      },
+      "actor": "p0",
+      "player_observation": {
+        "game": "coup",
+        "you": "p0",
+        "your_name": "Alice",
+        "your_cards": [
+          "contessa",
+          "captain"
+        ],
+        "your_coins": 2,
+        "turn": 3,
+        "current_player": "p1",
+        "phase": "block_action",
+        "players": [
+          {
+            "id": "p0",
+            "name": "Alice",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          },
+          {
+            "id": "p1",
+            "name": "Bob",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "contessa"
+            ]
+          },
+          {
+            "id": "p2",
+            "name": "Carol",
+            "coins": 5,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          }
+        ],
+        "deck_size": 9,
+        "pending_action": {
+          "actor": "p1",
+          "action": "foreign_aid",
+          "target": null,
+          "claim": null,
+          "blocker": null,
+          "block_claim": null
+        },
+        "history_length": 19
+      },
+      "output": {
+        "message": null,
+        "action": {
+          "type": "pass"
+        },
+        "raw_model_output": null,
+        "metadata": {}
+      },
+      "auto": false,
+      "fallback": false,
+      "attempt": 1,
+      "accepted": true,
+      "error": null,
+      "public_events": [
+        "Alice does not block.",
+        "Bob now has 4 coins.",
+        "Turn 4: Carol (5 coins)"
+      ]
+    },
+    {
+      "index": 13,
+      "kind": "step",
+      "interaction": {
+        "id": 10,
+        "phase": "action",
+        "mode": "single",
+        "eligible_players": [
+          "p2"
+        ],
+        "message_policy": "optional",
+        "description": "Carol's turn: choose one action."
+      },
+      "actor": "p2",
+      "player_observation": {
+        "game": "coup",
+        "you": "p2",
+        "your_name": "Carol",
+        "your_cards": [
+          "assassin",
+          "ambassador"
+        ],
+        "your_coins": 5,
+        "turn": 4,
+        "current_player": "p2",
+        "phase": "action",
+        "players": [
+          {
+            "id": "p0",
+            "name": "Alice",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          },
+          {
+            "id": "p1",
+            "name": "Bob",
+            "coins": 4,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "contessa"
+            ]
+          },
+          {
+            "id": "p2",
+            "name": "Carol",
+            "coins": 5,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          }
+        ],
+        "deck_size": 9,
+        "pending_action": null,
+        "history_length": 22
+      },
+      "output": {
+        "message": "Nothing personal.",
+        "action": {
+          "type": "assassinate",
+          "target": "p0"
+        },
+        "raw_model_output": null,
+        "metadata": {}
+      },
+      "auto": false,
+      "fallback": false,
+      "attempt": 1,
+      "accepted": true,
+      "error": null,
+      "public_events": [
+        "Carol says: \"Nothing personal.\"",
+        "Carol claims the Assassin, pays 3 coins and tries to assassinate Alice."
+      ]
+    },
+    {
+      "index": 14,
+      "kind": "step",
+      "interaction": {
+        "id": 11,
+        "phase": "challenge_action",
+        "mode": "response_window",
+        "eligible_players": [
+          "p0",
+          "p1"
+        ],
+        "message_policy": "optional",
+        "description": "Carol claims the Assassin (assassinate). Anyone may challenge."
+      },
+      "actor": "p0",
+      "player_observation": {
+        "game": "coup",
+        "you": "p0",
+        "your_name": "Alice",
+        "your_cards": [
+          "contessa",
+          "captain"
+        ],
+        "your_coins": 2,
+        "turn": 4,
+        "current_player": "p2",
+        "phase": "challenge_action",
+        "players": [
+          {
+            "id": "p0",
+            "name": "Alice",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          },
+          {
+            "id": "p1",
+            "name": "Bob",
+            "coins": 4,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "contessa"
+            ]
+          },
+          {
+            "id": "p2",
+            "name": "Carol",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          }
+        ],
+        "deck_size": 9,
+        "pending_action": {
+          "actor": "p2",
+          "action": "assassinate",
+          "target": "p0",
+          "claim": "assassin",
+          "blocker": null,
+          "block_claim": null
+        },
+        "history_length": 24
+      },
+      "output": {
+        "message": null,
+        "action": {
+          "type": "challenge"
+        },
+        "raw_model_output": null,
+        "metadata": {}
+      },
+      "auto": false,
+      "fallback": false,
+      "attempt": 1,
+      "accepted": true,
+      "error": null,
+      "public_events": [
+        "Alice challenges Carol's claim to be the Assassin.",
+        "Carol reveals the Assassin, shuffles it back and draws a new card. Alice loses the challenge."
+      ]
+    },
+    {
+      "index": 15,
+      "kind": "step",
+      "interaction": {
+        "id": 12,
+        "phase": "lose_influence",
+        "mode": "single",
+        "eligible_players": [
+          "p0"
+        ],
+        "message_policy": "optional",
+        "description": "Alice must reveal one card (lost a challenge)."
+      },
+      "actor": "p0",
+      "player_observation": {
+        "game": "coup",
+        "you": "p0",
+        "your_name": "Alice",
+        "your_cards": [
+          "contessa",
+          "captain"
+        ],
+        "your_coins": 2,
+        "turn": 4,
+        "current_player": "p2",
+        "phase": "lose_influence",
+        "players": [
+          {
+            "id": "p0",
+            "name": "Alice",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          },
+          {
+            "id": "p1",
+            "name": "Bob",
+            "coins": 4,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "contessa"
+            ]
+          },
+          {
+            "id": "p2",
+            "name": "Carol",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          }
+        ],
+        "deck_size": 9,
+        "pending_action": {
+          "actor": "p2",
+          "action": "assassinate",
+          "target": "p0",
+          "claim": "assassin",
+          "blocker": null,
+          "block_claim": null
+        },
+        "history_length": 26
+      },
+      "output": {
+        "message": null,
+        "action": {
+          "type": "reveal",
+          "card": "contessa"
+        },
+        "raw_model_output": null,
+        "metadata": {}
+      },
+      "auto": false,
+      "fallback": false,
+      "attempt": 1,
+      "accepted": true,
+      "error": null,
+      "public_events": [
+        "Alice loses an influence (lost a challenge) and reveals the Contessa."
+      ]
+    },
+    {
+      "index": 16,
+      "kind": "step",
+      "interaction": {
+        "id": 13,
+        "phase": "block_action",
+        "mode": "response_window",
+        "eligible_players": [
+          "p0"
+        ],
+        "message_policy": "optional",
+        "description": "Carol's assassinate may be blocked with the Contessa."
+      },
+      "actor": "p0",
+      "player_observation": {
+        "game": "coup",
+        "you": "p0",
+        "your_name": "Alice",
+        "your_cards": [
+          "captain"
+        ],
+        "your_coins": 2,
+        "turn": 4,
+        "current_player": "p2",
+        "phase": "block_action",
+        "players": [
+          {
+            "id": "p0",
+            "name": "Alice",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "contessa"
+            ]
+          },
+          {
+            "id": "p1",
+            "name": "Bob",
+            "coins": 4,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "contessa"
+            ]
+          },
+          {
+            "id": "p2",
+            "name": "Carol",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          }
+        ],
+        "deck_size": 9,
+        "pending_action": {
+          "actor": "p2",
+          "action": "assassinate",
+          "target": "p0",
+          "claim": "assassin",
+          "blocker": null,
+          "block_claim": null
+        },
+        "history_length": 27
+      },
+      "output": {
+        "message": "I have the Contessa.",
+        "action": {
+          "type": "block",
+          "claim": "contessa"
+        },
+        "raw_model_output": null,
+        "metadata": {}
+      },
+      "auto": false,
+      "fallback": false,
+      "attempt": 1,
+      "accepted": true,
+      "error": null,
+      "public_events": [
+        "Alice says: \"I have the Contessa.\"",
+        "Alice claims the Contessa to block."
+      ]
+    },
+    {
+      "index": 17,
+      "kind": "step",
+      "interaction": {
+        "id": 14,
+        "phase": "challenge_block",
+        "mode": "response_window",
+        "eligible_players": [
+          "p1",
+          "p2"
+        ],
+        "message_policy": "optional",
+        "description": "Alice claims the Contessa to block. Anyone may challenge."
+      },
+      "actor": "p1",
+      "player_observation": {
+        "game": "coup",
+        "you": "p1",
+        "your_name": "Bob",
+        "your_cards": [
+          "contessa"
+        ],
+        "your_coins": 4,
+        "turn": 4,
+        "current_player": "p2",
+        "phase": "challenge_block",
+        "players": [
+          {
+            "id": "p0",
+            "name": "Alice",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "contessa"
+            ]
+          },
+          {
+            "id": "p1",
+            "name": "Bob",
+            "coins": 4,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "contessa"
+            ]
+          },
+          {
+            "id": "p2",
+            "name": "Carol",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          }
+        ],
+        "deck_size": 9,
+        "pending_action": {
+          "actor": "p2",
+          "action": "assassinate",
+          "target": "p0",
+          "claim": "assassin",
+          "blocker": "p0",
+          "block_claim": "contessa"
+        },
+        "history_length": 29
+      },
+      "output": {
+        "message": "All three of those are already accounted for.",
+        "action": {
+          "type": "challenge"
+        },
+        "raw_model_output": null,
+        "metadata": {}
+      },
+      "auto": false,
+      "fallback": false,
+      "attempt": 1,
+      "accepted": true,
+      "error": null,
+      "public_events": [
+        "Bob says: \"All three of those are already accounted for.\"",
+        "Bob challenges Alice's claim to be the Contessa.",
+        "Alice cannot show the Contessa and loses the challenge.",
+        "The block fails."
+      ]
+    },
+    {
+      "index": 18,
+      "kind": "step",
+      "interaction": {
+        "id": 15,
+        "phase": "lose_influence",
+        "mode": "single",
+        "eligible_players": [
+          "p0"
+        ],
+        "message_policy": "optional",
+        "description": "Alice must reveal one card (caught bluffing)."
+      },
+      "actor": "p0",
+      "player_observation": {
+        "game": "coup",
+        "you": "p0",
+        "your_name": "Alice",
+        "your_cards": [
+          "captain"
+        ],
+        "your_coins": 2,
+        "turn": 4,
+        "current_player": "p2",
+        "phase": "lose_influence",
+        "players": [
+          {
+            "id": "p0",
+            "name": "Alice",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "contessa"
+            ]
+          },
+          {
+            "id": "p1",
+            "name": "Bob",
+            "coins": 4,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "contessa"
+            ]
+          },
+          {
+            "id": "p2",
+            "name": "Carol",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          }
+        ],
+        "deck_size": 9,
+        "pending_action": {
+          "actor": "p2",
+          "action": "assassinate",
+          "target": "p0",
+          "claim": "assassin",
+          "blocker": "p0",
+          "block_claim": "contessa"
+        },
+        "history_length": 33
+      },
+      "output": {
+        "message": null,
+        "action": {
+          "type": "reveal",
+          "card": "captain"
+        },
+        "raw_model_output": null,
+        "metadata": {
+          "auto": true
+        }
+      },
+      "auto": true,
+      "fallback": false,
+      "attempt": 1,
+      "accepted": true,
+      "error": null,
+      "public_events": [
+        "Alice loses an influence (caught bluffing) and reveals the Captain.",
+        "Alice has no influence left and is out of the game.",
+        "Turn 5: Bob (4 coins)"
+      ]
+    },
+    {
+      "index": 19,
+      "kind": "step",
+      "interaction": {
+        "id": 16,
+        "phase": "action",
+        "mode": "single",
+        "eligible_players": [
+          "p1"
+        ],
+        "message_policy": "optional",
+        "description": "Bob's turn: choose one action."
+      },
+      "actor": "p1",
+      "player_observation": {
+        "game": "coup",
+        "you": "p1",
+        "your_name": "Bob",
+        "your_cards": [
+          "contessa"
+        ],
+        "your_coins": 4,
+        "turn": 5,
+        "current_player": "p1",
+        "phase": "action",
+        "players": [
+          {
+            "id": "p0",
+            "name": "Alice",
+            "coins": 0,
+            "alive": false,
+            "hidden_card_count": 0,
+            "revealed_cards": [
+              "contessa",
+              "captain"
+            ]
+          },
+          {
+            "id": "p1",
+            "name": "Bob",
+            "coins": 4,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "contessa"
+            ]
+          },
+          {
+            "id": "p2",
+            "name": "Carol",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          }
+        ],
+        "deck_size": 9,
+        "pending_action": null,
+        "history_length": 36
+      },
+      "output": {
+        "message": null,
+        "action": {
+          "type": "income"
+        },
+        "raw_model_output": null,
+        "metadata": {}
+      },
+      "auto": false,
+      "fallback": false,
+      "attempt": 1,
+      "accepted": true,
+      "error": null,
+      "public_events": [
+        "Bob takes Income.",
+        "Bob now has 5 coins.",
+        "Turn 6: Carol (2 coins)"
+      ]
+    },
+    {
+      "index": 20,
+      "kind": "step",
+      "interaction": {
+        "id": 17,
+        "phase": "action",
+        "mode": "single",
+        "eligible_players": [
+          "p2"
+        ],
+        "message_policy": "optional",
+        "description": "Carol's turn: choose one action."
+      },
+      "actor": "p2",
+      "player_observation": {
+        "game": "coup",
+        "you": "p2",
+        "your_name": "Carol",
+        "your_cards": [
+          "ambassador",
+          "captain"
+        ],
+        "your_coins": 2,
+        "turn": 6,
+        "current_player": "p2",
+        "phase": "action",
+        "players": [
+          {
+            "id": "p0",
+            "name": "Alice",
+            "coins": 0,
+            "alive": false,
+            "hidden_card_count": 0,
+            "revealed_cards": [
+              "contessa",
+              "captain"
+            ]
+          },
+          {
+            "id": "p1",
+            "name": "Bob",
+            "coins": 5,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "contessa"
+            ]
+          },
+          {
+            "id": "p2",
+            "name": "Carol",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          }
+        ],
+        "deck_size": 9,
+        "pending_action": null,
+        "history_length": 39
+      },
+      "output": {
+        "message": "My Captain will take those coins.",
+        "action": {
+          "type": "steal",
+          "target": "p1"
+        },
+        "raw_model_output": null,
+        "metadata": {}
+      },
+      "auto": false,
+      "fallback": false,
+      "attempt": 1,
+      "accepted": true,
+      "error": null,
+      "public_events": [
+        "Carol says: \"My Captain will take those coins.\"",
+        "Carol claims the Captain and tries to steal from Bob."
+      ]
+    },
+    {
+      "index": 21,
+      "kind": "step",
+      "interaction": {
+        "id": 18,
+        "phase": "challenge_action",
+        "mode": "response_window",
+        "eligible_players": [
+          "p1"
+        ],
+        "message_policy": "optional",
+        "description": "Carol claims the Captain (steal). Anyone may challenge."
+      },
+      "actor": "p1",
+      "player_observation": {
+        "game": "coup",
+        "you": "p1",
+        "your_name": "Bob",
+        "your_cards": [
+          "contessa"
+        ],
+        "your_coins": 5,
+        "turn": 6,
+        "current_player": "p2",
+        "phase": "challenge_action",
+        "players": [
+          {
+            "id": "p0",
+            "name": "Alice",
+            "coins": 0,
+            "alive": false,
+            "hidden_card_count": 0,
+            "revealed_cards": [
+              "contessa",
+              "captain"
+            ]
+          },
+          {
+            "id": "p1",
+            "name": "Bob",
+            "coins": 5,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "contessa"
+            ]
+          },
+          {
+            "id": "p2",
+            "name": "Carol",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          }
+        ],
+        "deck_size": 9,
+        "pending_action": {
+          "actor": "p2",
+          "action": "steal",
+          "target": "p1",
+          "claim": "captain",
+          "blocker": null,
+          "block_claim": null
+        },
+        "history_length": 41
+      },
+      "output": {
+        "message": null,
+        "action": {
+          "type": "pass"
+        },
+        "raw_model_output": null,
+        "metadata": {}
+      },
+      "auto": false,
+      "fallback": false,
+      "attempt": 1,
+      "accepted": true,
+      "error": null,
+      "public_events": [
+        "Bob passes."
+      ]
+    },
+    {
+      "index": 22,
+      "kind": "step",
+      "interaction": {
+        "id": 19,
+        "phase": "block_action",
+        "mode": "response_window",
+        "eligible_players": [
+          "p1"
+        ],
+        "message_policy": "optional",
+        "description": "Carol's steal may be blocked with the Captain or the Ambassador."
+      },
+      "actor": "p1",
+      "player_observation": {
+        "game": "coup",
+        "you": "p1",
+        "your_name": "Bob",
+        "your_cards": [
+          "contessa"
+        ],
+        "your_coins": 5,
+        "turn": 6,
+        "current_player": "p2",
+        "phase": "block_action",
+        "players": [
+          {
+            "id": "p0",
+            "name": "Alice",
+            "coins": 0,
+            "alive": false,
+            "hidden_card_count": 0,
+            "revealed_cards": [
+              "contessa",
+              "captain"
+            ]
+          },
+          {
+            "id": "p1",
+            "name": "Bob",
+            "coins": 5,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "contessa"
+            ]
+          },
+          {
+            "id": "p2",
+            "name": "Carol",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          }
+        ],
+        "deck_size": 9,
+        "pending_action": {
+          "actor": "p2",
+          "action": "steal",
+          "target": "p1",
+          "claim": "captain",
+          "blocker": null,
+          "block_claim": null
+        },
+        "history_length": 42
+      },
+      "output": {
+        "message": null,
+        "action": {
+          "type": "pass"
+        },
+        "raw_model_output": null,
+        "metadata": {}
+      },
+      "auto": false,
+      "fallback": false,
+      "attempt": 1,
+      "accepted": true,
+      "error": null,
+      "public_events": [
+        "Bob does not block.",
+        "Carol steals 2 coins from Bob.",
+        "Turn 7: Bob (3 coins)"
+      ]
+    },
+    {
+      "index": 23,
+      "kind": "step",
+      "interaction": {
+        "id": 20,
+        "phase": "action",
+        "mode": "single",
+        "eligible_players": [
+          "p1"
+        ],
+        "message_policy": "optional",
+        "description": "Bob's turn: choose one action."
+      },
+      "actor": "p1",
+      "player_observation": {
+        "game": "coup",
+        "you": "p1",
+        "your_name": "Bob",
+        "your_cards": [
+          "contessa"
+        ],
+        "your_coins": 3,
+        "turn": 7,
+        "current_player": "p1",
+        "phase": "action",
+        "players": [
+          {
+            "id": "p0",
+            "name": "Alice",
+            "coins": 0,
+            "alive": false,
+            "hidden_card_count": 0,
+            "revealed_cards": [
+              "contessa",
+              "captain"
+            ]
+          },
+          {
+            "id": "p1",
+            "name": "Bob",
+            "coins": 3,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "contessa"
+            ]
+          },
+          {
+            "id": "p2",
+            "name": "Carol",
+            "coins": 4,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          }
+        ],
+        "deck_size": 9,
+        "pending_action": null,
+        "history_length": 45
+      },
+      "output": {
+        "message": null,
+        "action": {
+          "type": "assassinate",
+          "target": "p2"
+        },
+        "raw_model_output": null,
+        "metadata": {}
+      },
+      "auto": false,
+      "fallback": false,
+      "attempt": 1,
+      "accepted": true,
+      "error": null,
+      "public_events": [
+        "Bob claims the Assassin, pays 3 coins and tries to assassinate Carol."
+      ]
+    },
+    {
+      "index": 24,
+      "kind": "step",
+      "interaction": {
+        "id": 21,
+        "phase": "challenge_action",
+        "mode": "response_window",
+        "eligible_players": [
+          "p2"
+        ],
+        "message_policy": "optional",
+        "description": "Bob claims the Assassin (assassinate). Anyone may challenge."
+      },
+      "actor": "p2",
+      "player_observation": {
+        "game": "coup",
+        "you": "p2",
+        "your_name": "Carol",
+        "your_cards": [
+          "ambassador",
+          "captain"
+        ],
+        "your_coins": 4,
+        "turn": 7,
+        "current_player": "p1",
+        "phase": "challenge_action",
+        "players": [
+          {
+            "id": "p0",
+            "name": "Alice",
+            "coins": 0,
+            "alive": false,
+            "hidden_card_count": 0,
+            "revealed_cards": [
+              "contessa",
+              "captain"
+            ]
+          },
+          {
+            "id": "p1",
+            "name": "Bob",
+            "coins": 0,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "contessa"
+            ]
+          },
+          {
+            "id": "p2",
+            "name": "Carol",
+            "coins": 4,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          }
+        ],
+        "deck_size": 9,
+        "pending_action": {
+          "actor": "p1",
+          "action": "assassinate",
+          "target": "p2",
+          "claim": "assassin",
+          "blocker": null,
+          "block_claim": null
+        },
+        "history_length": 46
+      },
+      "output": {
+        "message": null,
+        "action": {
+          "type": "pass"
+        },
+        "raw_model_output": null,
+        "metadata": {}
+      },
+      "auto": false,
+      "fallback": false,
+      "attempt": 1,
+      "accepted": true,
+      "error": null,
+      "public_events": [
+        "Carol passes."
+      ]
+    },
+    {
+      "index": 25,
+      "kind": "step",
+      "interaction": {
+        "id": 22,
+        "phase": "block_action",
+        "mode": "response_window",
+        "eligible_players": [
+          "p2"
+        ],
+        "message_policy": "optional",
+        "description": "Bob's assassinate may be blocked with the Contessa."
+      },
+      "actor": "p2",
+      "player_observation": {
+        "game": "coup",
+        "you": "p2",
+        "your_name": "Carol",
+        "your_cards": [
+          "ambassador",
+          "captain"
+        ],
+        "your_coins": 4,
+        "turn": 7,
+        "current_player": "p1",
+        "phase": "block_action",
+        "players": [
+          {
+            "id": "p0",
+            "name": "Alice",
+            "coins": 0,
+            "alive": false,
+            "hidden_card_count": 0,
+            "revealed_cards": [
+              "contessa",
+              "captain"
+            ]
+          },
+          {
+            "id": "p1",
+            "name": "Bob",
+            "coins": 0,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "contessa"
+            ]
+          },
+          {
+            "id": "p2",
+            "name": "Carol",
+            "coins": 4,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          }
+        ],
+        "deck_size": 9,
+        "pending_action": {
+          "actor": "p1",
+          "action": "assassinate",
+          "target": "p2",
+          "claim": "assassin",
+          "blocker": null,
+          "block_claim": null
+        },
+        "history_length": 47
+      },
+      "output": {
+        "message": null,
+        "action": {
+          "type": "pass"
+        },
+        "raw_model_output": null,
+        "metadata": {}
+      },
+      "auto": false,
+      "fallback": false,
+      "attempt": 1,
+      "accepted": true,
+      "error": null,
+      "public_events": [
+        "Carol does not block."
+      ]
+    },
+    {
+      "index": 26,
+      "kind": "step",
+      "interaction": {
+        "id": 23,
+        "phase": "lose_influence",
+        "mode": "single",
+        "eligible_players": [
+          "p2"
+        ],
+        "message_policy": "optional",
+        "description": "Carol must reveal one card (hit by an assassination)."
+      },
+      "actor": "p2",
+      "player_observation": {
+        "game": "coup",
+        "you": "p2",
+        "your_name": "Carol",
+        "your_cards": [
+          "ambassador",
+          "captain"
+        ],
+        "your_coins": 4,
+        "turn": 7,
+        "current_player": "p1",
+        "phase": "lose_influence",
+        "players": [
+          {
+            "id": "p0",
+            "name": "Alice",
+            "coins": 0,
+            "alive": false,
+            "hidden_card_count": 0,
+            "revealed_cards": [
+              "contessa",
+              "captain"
+            ]
+          },
+          {
+            "id": "p1",
+            "name": "Bob",
+            "coins": 0,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "contessa"
+            ]
+          },
+          {
+            "id": "p2",
+            "name": "Carol",
+            "coins": 4,
+            "alive": true,
+            "hidden_card_count": 2,
+            "revealed_cards": []
+          }
+        ],
+        "deck_size": 9,
+        "pending_action": {
+          "actor": "p1",
+          "action": "assassinate",
+          "target": "p2",
+          "claim": "assassin",
+          "blocker": null,
+          "block_claim": null
+        },
+        "history_length": 48
+      },
+      "output": {
+        "message": null,
+        "action": {
+          "type": "reveal",
+          "card": "ambassador"
+        },
+        "raw_model_output": null,
+        "metadata": {}
+      },
+      "auto": false,
+      "fallback": false,
+      "attempt": 1,
+      "accepted": true,
+      "error": null,
+      "public_events": [
+        "Carol loses an influence (hit by an assassination) and reveals the Ambassador.",
+        "Turn 8: Carol (4 coins)"
+      ]
+    },
+    {
+      "index": 27,
+      "kind": "step",
+      "interaction": {
+        "id": 24,
+        "phase": "action",
+        "mode": "single",
+        "eligible_players": [
+          "p2"
+        ],
+        "message_policy": "optional",
+        "description": "Carol's turn: choose one action."
+      },
+      "actor": "p2",
+      "player_observation": {
+        "game": "coup",
+        "you": "p2",
+        "your_name": "Carol",
+        "your_cards": [
+          "captain"
+        ],
+        "your_coins": 4,
+        "turn": 8,
+        "current_player": "p2",
+        "phase": "action",
+        "players": [
+          {
+            "id": "p0",
+            "name": "Alice",
+            "coins": 0,
+            "alive": false,
+            "hidden_card_count": 0,
+            "revealed_cards": [
+              "contessa",
+              "captain"
+            ]
+          },
+          {
+            "id": "p1",
+            "name": "Bob",
+            "coins": 0,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "contessa"
+            ]
+          },
+          {
+            "id": "p2",
+            "name": "Carol",
+            "coins": 4,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "ambassador"
+            ]
+          }
+        ],
+        "deck_size": 9,
+        "pending_action": null,
+        "history_length": 50
+      },
+      "output": {
+        "message": null,
+        "action": {
+          "type": "income"
+        },
+        "raw_model_output": null,
+        "metadata": {}
+      },
+      "auto": false,
+      "fallback": false,
+      "attempt": 1,
+      "accepted": true,
+      "error": null,
+      "public_events": [
+        "Carol takes Income.",
+        "Carol now has 5 coins.",
+        "Turn 9: Bob (0 coins)"
+      ]
+    },
+    {
+      "index": 28,
+      "kind": "step",
+      "interaction": {
+        "id": 25,
+        "phase": "action",
+        "mode": "single",
+        "eligible_players": [
+          "p1"
+        ],
+        "message_policy": "optional",
+        "description": "Bob's turn: choose one action."
+      },
+      "actor": "p1",
+      "player_observation": {
+        "game": "coup",
+        "you": "p1",
+        "your_name": "Bob",
+        "your_cards": [
+          "contessa"
+        ],
+        "your_coins": 0,
+        "turn": 9,
+        "current_player": "p1",
+        "phase": "action",
+        "players": [
+          {
+            "id": "p0",
+            "name": "Alice",
+            "coins": 0,
+            "alive": false,
+            "hidden_card_count": 0,
+            "revealed_cards": [
+              "contessa",
+              "captain"
+            ]
+          },
+          {
+            "id": "p1",
+            "name": "Bob",
+            "coins": 0,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "contessa"
+            ]
+          },
+          {
+            "id": "p2",
+            "name": "Carol",
+            "coins": 5,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "ambassador"
+            ]
+          }
+        ],
+        "deck_size": 9,
+        "pending_action": null,
+        "history_length": 53
+      },
+      "output": {
+        "message": null,
+        "action": {
+          "type": "income"
+        },
+        "raw_model_output": null,
+        "metadata": {}
+      },
+      "auto": false,
+      "fallback": false,
+      "attempt": 1,
+      "accepted": true,
+      "error": null,
+      "public_events": [
+        "Bob takes Income.",
+        "Bob now has 1 coin.",
+        "Turn 10: Carol (5 coins)"
+      ]
+    },
+    {
+      "index": 29,
+      "kind": "step",
+      "interaction": {
+        "id": 26,
+        "phase": "action",
+        "mode": "single",
+        "eligible_players": [
+          "p2"
+        ],
+        "message_policy": "optional",
+        "description": "Carol's turn: choose one action."
+      },
+      "actor": "p2",
+      "player_observation": {
+        "game": "coup",
+        "you": "p2",
+        "your_name": "Carol",
+        "your_cards": [
+          "captain"
+        ],
+        "your_coins": 5,
+        "turn": 10,
+        "current_player": "p2",
+        "phase": "action",
+        "players": [
+          {
+            "id": "p0",
+            "name": "Alice",
+            "coins": 0,
+            "alive": false,
+            "hidden_card_count": 0,
+            "revealed_cards": [
+              "contessa",
+              "captain"
+            ]
+          },
+          {
+            "id": "p1",
+            "name": "Bob",
+            "coins": 1,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "contessa"
+            ]
+          },
+          {
+            "id": "p2",
+            "name": "Carol",
+            "coins": 5,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "ambassador"
+            ]
+          }
+        ],
+        "deck_size": 9,
+        "pending_action": null,
+        "history_length": 56
+      },
+      "output": {
+        "message": null,
+        "action": {
+          "type": "income"
+        },
+        "raw_model_output": null,
+        "metadata": {}
+      },
+      "auto": false,
+      "fallback": false,
+      "attempt": 1,
+      "accepted": true,
+      "error": null,
+      "public_events": [
+        "Carol takes Income.",
+        "Carol now has 6 coins.",
+        "Turn 11: Bob (1 coin)"
+      ]
+    },
+    {
+      "index": 30,
+      "kind": "step",
+      "interaction": {
+        "id": 27,
+        "phase": "action",
+        "mode": "single",
+        "eligible_players": [
+          "p1"
+        ],
+        "message_policy": "optional",
+        "description": "Bob's turn: choose one action."
+      },
+      "actor": "p1",
+      "player_observation": {
+        "game": "coup",
+        "you": "p1",
+        "your_name": "Bob",
+        "your_cards": [
+          "contessa"
+        ],
+        "your_coins": 1,
+        "turn": 11,
+        "current_player": "p1",
+        "phase": "action",
+        "players": [
+          {
+            "id": "p0",
+            "name": "Alice",
+            "coins": 0,
+            "alive": false,
+            "hidden_card_count": 0,
+            "revealed_cards": [
+              "contessa",
+              "captain"
+            ]
+          },
+          {
+            "id": "p1",
+            "name": "Bob",
+            "coins": 1,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "contessa"
+            ]
+          },
+          {
+            "id": "p2",
+            "name": "Carol",
+            "coins": 6,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "ambassador"
+            ]
+          }
+        ],
+        "deck_size": 9,
+        "pending_action": null,
+        "history_length": 59
+      },
+      "output": {
+        "message": null,
+        "action": {
+          "type": "income"
+        },
+        "raw_model_output": null,
+        "metadata": {}
+      },
+      "auto": false,
+      "fallback": false,
+      "attempt": 1,
+      "accepted": true,
+      "error": null,
+      "public_events": [
+        "Bob takes Income.",
+        "Bob now has 2 coins.",
+        "Turn 12: Carol (6 coins)"
+      ]
+    },
+    {
+      "index": 31,
+      "kind": "step",
+      "interaction": {
+        "id": 28,
+        "phase": "action",
+        "mode": "single",
+        "eligible_players": [
+          "p2"
+        ],
+        "message_policy": "optional",
+        "description": "Carol's turn: choose one action."
+      },
+      "actor": "p2",
+      "player_observation": {
+        "game": "coup",
+        "you": "p2",
+        "your_name": "Carol",
+        "your_cards": [
+          "captain"
+        ],
+        "your_coins": 6,
+        "turn": 12,
+        "current_player": "p2",
+        "phase": "action",
+        "players": [
+          {
+            "id": "p0",
+            "name": "Alice",
+            "coins": 0,
+            "alive": false,
+            "hidden_card_count": 0,
+            "revealed_cards": [
+              "contessa",
+              "captain"
+            ]
+          },
+          {
+            "id": "p1",
+            "name": "Bob",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "contessa"
+            ]
+          },
+          {
+            "id": "p2",
+            "name": "Carol",
+            "coins": 6,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "ambassador"
+            ]
+          }
+        ],
+        "deck_size": 9,
+        "pending_action": null,
+        "history_length": 62
+      },
+      "output": {
+        "message": null,
+        "action": {
+          "type": "tax"
+        },
+        "raw_model_output": null,
+        "metadata": {}
+      },
+      "auto": false,
+      "fallback": false,
+      "attempt": 1,
+      "accepted": true,
+      "error": null,
+      "public_events": [
+        "Carol claims the Duke and takes Tax."
+      ]
+    },
+    {
+      "index": 32,
+      "kind": "step",
+      "interaction": {
+        "id": 29,
+        "phase": "challenge_action",
+        "mode": "response_window",
+        "eligible_players": [
+          "p1"
+        ],
+        "message_policy": "optional",
+        "description": "Carol claims the Duke (tax). Anyone may challenge."
+      },
+      "actor": "p1",
+      "player_observation": {
+        "game": "coup",
+        "you": "p1",
+        "your_name": "Bob",
+        "your_cards": [
+          "contessa"
+        ],
+        "your_coins": 2,
+        "turn": 12,
+        "current_player": "p2",
+        "phase": "challenge_action",
+        "players": [
+          {
+            "id": "p0",
+            "name": "Alice",
+            "coins": 0,
+            "alive": false,
+            "hidden_card_count": 0,
+            "revealed_cards": [
+              "contessa",
+              "captain"
+            ]
+          },
+          {
+            "id": "p1",
+            "name": "Bob",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "contessa"
+            ]
+          },
+          {
+            "id": "p2",
+            "name": "Carol",
+            "coins": 6,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "ambassador"
+            ]
+          }
+        ],
+        "deck_size": 9,
+        "pending_action": {
+          "actor": "p2",
+          "action": "tax",
+          "target": null,
+          "claim": "duke",
+          "blocker": null,
+          "block_claim": null
+        },
+        "history_length": 63
+      },
+      "output": {
+        "message": null,
+        "action": {
+          "type": "pass"
+        },
+        "raw_model_output": null,
+        "metadata": {}
+      },
+      "auto": false,
+      "fallback": false,
+      "attempt": 1,
+      "accepted": true,
+      "error": null,
+      "public_events": [
+        "Bob passes.",
+        "Carol now has 9 coins.",
+        "Turn 13: Bob (2 coins)"
+      ]
+    },
+    {
+      "index": 33,
+      "kind": "step",
+      "interaction": {
+        "id": 30,
+        "phase": "action",
+        "mode": "single",
+        "eligible_players": [
+          "p1"
+        ],
+        "message_policy": "optional",
+        "description": "Bob's turn: choose one action."
+      },
+      "actor": "p1",
+      "player_observation": {
+        "game": "coup",
+        "you": "p1",
+        "your_name": "Bob",
+        "your_cards": [
+          "contessa"
+        ],
+        "your_coins": 2,
+        "turn": 13,
+        "current_player": "p1",
+        "phase": "action",
+        "players": [
+          {
+            "id": "p0",
+            "name": "Alice",
+            "coins": 0,
+            "alive": false,
+            "hidden_card_count": 0,
+            "revealed_cards": [
+              "contessa",
+              "captain"
+            ]
+          },
+          {
+            "id": "p1",
+            "name": "Bob",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "contessa"
+            ]
+          },
+          {
+            "id": "p2",
+            "name": "Carol",
+            "coins": 9,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "ambassador"
+            ]
+          }
+        ],
+        "deck_size": 9,
+        "pending_action": null,
+        "history_length": 66
+      },
+      "output": {
+        "message": null,
+        "action": {
+          "type": "income"
+        },
+        "raw_model_output": null,
+        "metadata": {}
+      },
+      "auto": false,
+      "fallback": false,
+      "attempt": 1,
+      "accepted": true,
+      "error": null,
+      "public_events": [
+        "Bob takes Income.",
+        "Bob now has 3 coins.",
+        "Turn 14: Carol (9 coins)"
+      ]
+    },
+    {
+      "index": 34,
+      "kind": "step",
+      "interaction": {
+        "id": 31,
+        "phase": "action",
+        "mode": "single",
+        "eligible_players": [
+          "p2"
+        ],
+        "message_policy": "optional",
+        "description": "Carol's turn: choose one action."
+      },
+      "actor": "p2",
+      "player_observation": {
+        "game": "coup",
+        "you": "p2",
+        "your_name": "Carol",
+        "your_cards": [
+          "captain"
+        ],
+        "your_coins": 9,
+        "turn": 14,
+        "current_player": "p2",
+        "phase": "action",
+        "players": [
+          {
+            "id": "p0",
+            "name": "Alice",
+            "coins": 0,
+            "alive": false,
+            "hidden_card_count": 0,
+            "revealed_cards": [
+              "contessa",
+              "captain"
+            ]
+          },
+          {
+            "id": "p1",
+            "name": "Bob",
+            "coins": 3,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "contessa"
+            ]
+          },
+          {
+            "id": "p2",
+            "name": "Carol",
+            "coins": 9,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "ambassador"
+            ]
+          }
+        ],
+        "deck_size": 9,
+        "pending_action": null,
+        "history_length": 69
+      },
+      "output": {
+        "message": null,
+        "action": {
+          "type": "coup",
+          "target": "p1"
+        },
+        "raw_model_output": null,
+        "metadata": {}
+      },
+      "auto": false,
+      "fallback": false,
+      "attempt": 1,
+      "accepted": true,
+      "error": null,
+      "public_events": [
+        "Carol pays 7 coins and launches a Coup against Bob."
+      ]
+    },
+    {
+      "index": 35,
+      "kind": "step",
+      "interaction": {
+        "id": 32,
+        "phase": "lose_influence",
+        "mode": "single",
+        "eligible_players": [
+          "p1"
+        ],
+        "message_policy": "optional",
+        "description": "Bob must reveal one card (hit by a coup)."
+      },
+      "actor": "p1",
+      "player_observation": {
+        "game": "coup",
+        "you": "p1",
+        "your_name": "Bob",
+        "your_cards": [
+          "contessa"
+        ],
+        "your_coins": 3,
+        "turn": 14,
+        "current_player": "p2",
+        "phase": "lose_influence",
+        "players": [
+          {
+            "id": "p0",
+            "name": "Alice",
+            "coins": 0,
+            "alive": false,
+            "hidden_card_count": 0,
+            "revealed_cards": [
+              "contessa",
+              "captain"
+            ]
+          },
+          {
+            "id": "p1",
+            "name": "Bob",
+            "coins": 3,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "contessa"
+            ]
+          },
+          {
+            "id": "p2",
+            "name": "Carol",
+            "coins": 2,
+            "alive": true,
+            "hidden_card_count": 1,
+            "revealed_cards": [
+              "ambassador"
+            ]
+          }
+        ],
+        "deck_size": 9,
+        "pending_action": {
+          "actor": "p2",
+          "action": "coup",
+          "target": "p1",
+          "claim": null,
+          "blocker": null,
+          "block_claim": null
+        },
+        "history_length": 70
+      },
+      "output": {
+        "message": null,
+        "action": {
+          "type": "reveal",
+          "card": "contessa"
+        },
+        "raw_model_output": null,
+        "metadata": {
+          "auto": true
+        }
+      },
+      "auto": true,
+      "fallback": false,
+      "attempt": 1,
+      "accepted": true,
+      "error": null,
+      "public_events": [
+        "Bob loses an influence (hit by a coup) and reveals the Contessa.",
+        "Bob has no influence left and is out of the game.",
+        "Carol is the last player with influence and wins."
+      ]
+    }
+  ],
+  "public_log": [
+    "Game starts with 3 players. Carol goes first.",
+    "Turn 1: Carol (2 coins)",
+    "Carol claims the Duke and takes Tax.",
+    "Alice passes.",
+    "Bob challenges Carol's claim to be the Duke.",
+    "Carol reveals the Duke, shuffles it back and draws a new card. Bob loses the challenge.",
+    "Bob loses an influence (lost a challenge) and reveals the Contessa.",
+    "Carol now has 5 coins.",
+    "Turn 2: Alice (2 coins)",
+    "Alice claims the Captain and tries to steal from Carol.",
+    "Bob passes.",
+    "Carol passes.",
+    "Carol claims the Ambassador to block.",
+    "Alice passes.",
+    "Bob passes.",
+    "The block stands. Alice's steal fails.",
+    "Turn 3: Bob (2 coins)",
+    "Bob asks for Foreign Aid.",
+    "Carol does not block.",
+    "Alice does not block.",
+    "Bob now has 4 coins.",
+    "Turn 4: Carol (5 coins)",
+    "Carol says: \"Nothing personal.\"",
+    "Carol claims the Assassin, pays 3 coins and tries to assassinate Alice.",
+    "Alice challenges Carol's claim to be the Assassin.",
+    "Carol reveals the Assassin, shuffles it back and draws a new card. Alice loses the challenge.",
+    "Alice loses an influence (lost a challenge) and reveals the Contessa.",
+    "Alice says: \"I have the Contessa.\"",
+    "Alice claims the Contessa to block.",
+    "Bob says: \"All three of those are already accounted for.\"",
+    "Bob challenges Alice's claim to be the Contessa.",
+    "Alice cannot show the Contessa and loses the challenge.",
+    "The block fails.",
+    "Alice loses an influence (caught bluffing) and reveals the Captain.",
+    "Alice has no influence left and is out of the game.",
+    "Turn 5: Bob (4 coins)",
+    "Bob takes Income.",
+    "Bob now has 5 coins.",
+    "Turn 6: Carol (2 coins)",
+    "Carol says: \"My Captain will take those coins.\"",
+    "Carol claims the Captain and tries to steal from Bob.",
+    "Bob passes.",
+    "Bob does not block.",
+    "Carol steals 2 coins from Bob.",
+    "Turn 7: Bob (3 coins)",
+    "Bob claims the Assassin, pays 3 coins and tries to assassinate Carol.",
+    "Carol passes.",
+    "Carol does not block.",
+    "Carol loses an influence (hit by an assassination) and reveals the Ambassador.",
+    "Turn 8: Carol (4 coins)",
+    "Carol takes Income.",
+    "Carol now has 5 coins.",
+    "Turn 9: Bob (0 coins)",
+    "Bob takes Income.",
+    "Bob now has 1 coin.",
+    "Turn 10: Carol (5 coins)",
+    "Carol takes Income.",
+    "Carol now has 6 coins.",
+    "Turn 11: Bob (1 coin)",
+    "Bob takes Income.",
+    "Bob now has 2 coins.",
+    "Turn 12: Carol (6 coins)",
+    "Carol claims the Duke and takes Tax.",
+    "Bob passes.",
+    "Carol now has 9 coins.",
+    "Turn 13: Bob (2 coins)",
+    "Bob takes Income.",
+    "Bob now has 3 coins.",
+    "Turn 14: Carol (9 coins)",
+    "Carol pays 7 coins and launches a Coup against Bob.",
+    "Bob loses an influence (hit by a coup) and reveals the Contessa.",
+    "Bob has no influence left and is out of the game.",
+    "Carol is the last player with influence and wins."
+  ],
+  "result": {
+    "winners": [
+      "p2"
+    ],
+    "payoffs": {
+      "p0": 0.0,
+      "p1": 0.0,
+      "p2": 1.0
+    },
+    "termination_reason": "last_player_with_influence",
+    "num_events": 36,
+    "num_agent_calls": 33,
+    "num_invalid_outputs": 0,
+    "final_public_state": {
+      "turn": 14,
+      "current_player": null,
+      "phase": null,
+      "players": [
+        {
+          "id": "p0",
+          "name": "Alice",
+          "coins": 0,
+          "alive": false,
+          "hidden_card_count": 0,
+          "revealed_cards": [
+            "contessa",
+            "captain"
+          ]
+        },
+        {
+          "id": "p1",
+          "name": "Bob",
+          "coins": 0,
+          "alive": false,
+          "hidden_card_count": 0,
+          "revealed_cards": [
+            "contessa",
+            "contessa"
+          ]
+        },
+        {
+          "id": "p2",
+          "name": "Carol",
+          "coins": 2,
+          "alive": true,
+          "hidden_card_count": 1,
+          "revealed_cards": [
+            "ambassador"
+          ]
+        }
+      ],
+      "deck_size": 9,
+      "pending_action": null
+    }
+  }
+}
