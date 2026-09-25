@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+# slurm-vscode-proxy.sh.example
+#
+# EXAMPLE ONLY. NOT TESTED ON CARC. Read docs/carc-setup.md, section
+# "Option D", before using it.
+#
+# CARC's documentation says the VS Code Remote-SSH extension is blocked on the
+# login nodes and recommends the SSH-FS extension or the Code Server app in
+# CARC OnDemand instead. This script tries to keep the VS Code server off the
+# login node by connecting VS Code to a compute node, but CARC has not
+# confirmed that this setup is acceptable. Ask CARC support (carc-support@usc.edu)
+# or your group before relying on it: a login-node process limit violation can
+# put a hold on your account.
+#
+# What it does when used as an SSH ProxyCommand (it runs on the login node):
+#   1. reuse your running or pending job named $JOB_NAME, or submit one that just sleeps
+#   2. wait until Slurm has started that job on a compute node
+#   3. connect this SSH session to port 22 of that node
+# CARC documents that you may ssh to a node while your job runs on it.
+#
+# Install on CARC (by hand):
+#   mkdir -p ~/bin
+#   cp scripts/carc/slurm-vscode-proxy.sh.example ~/bin/slurm-vscode-proxy.sh
+#   chmod 700 ~/bin/slurm-vscode-proxy.sh
+#   then edit the SETTINGS block below.
+#
+# Stop the job when you are done, or it keeps charging your account until TIME runs out:
+#   scancel --me --name=vscode-dev
+#
+# Everything printed for humans goes to stderr: stdout is the SSH connection itself.
+
+set -euo pipefail
+
+# ---------------------------------------------------------------- SETTINGS
+ACCOUNT="REPLACE_WITH_PROJECT_ID"  # your project account; run `myaccount` to see it
+PARTITION="main"                   # CARC's default CPU partition (documented)
+CPUS=4
+MEM="16G"
+TIME="04:00:00"                    # the job, and your editor session, end after this
+JOB_NAME="vscode-dev"
+EXCLUDE=""                         # optional, e.g. EXCLUDE="node-a,node-b"  (one '=', not '==')
+WAIT_SECONDS=600
+# ------------------------------------------------------------------------
+
+log() { echo "[slurm-vscode-proxy] $*" >&2; }
+
+if [ "$ACCOUNT" = "REPLACE_WITH_PROJECT_ID" ]; then
+  log "edit ACCOUNT in $0 first (see: myaccount)"
+  exit 1
+fi
+command -v nc >/dev/null 2>&1 || { log "nc (netcat) not found on this node"; exit 1; }
+
+job_id="$(squeue --me --name="$JOB_NAME" --noheader --format=%i | head -n 1)"
+if [ -z "$job_id" ]; then
+  args=(--job-name="$JOB_NAME" --account="$ACCOUNT" --partition="$PARTITION"
+        --cpus-per-task="$CPUS" --mem="$MEM" --time="$TIME" --output=/dev/null)
+  if [ -n "$EXCLUDE" ]; then args+=(--exclude="$EXCLUDE"); fi
+  job_id="$(sbatch --parsable "${args[@]}" --wrap="sleep infinity")"
+  log "submitted job $job_id"
+else
+  log "reusing job $job_id"
+fi
+
+node=""
+state=""
+for _ in $(seq 1 $((WAIT_SECONDS / 5))); do
+  state="$(squeue --job="$job_id" --noheader --format=%T)"
+  node="$(squeue --job="$job_id" --noheader --format=%N)"
+  if [ "$state" = "RUNNING" ] && [ -n "$node" ]; then
+    break
+  fi
+  sleep 5
+done
+
+if [ "$state" != "RUNNING" ] || [ -z "$node" ]; then
+  log "job $job_id is not running after ${WAIT_SECONDS}s (state: ${state:-unknown}); check: squeue --me"
+  exit 1
+fi
+
+log "connecting to $node (job $job_id)"
+exec nc "$node" 22
