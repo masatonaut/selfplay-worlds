@@ -206,7 +206,7 @@ No Runner, agent, logger or inference change is needed for a game that uses the 
 - In Coup, talk is attached to decisions; players cannot speak out of turn.
 - The Runner is sequential and synchronous. There is no batching or parallel inference.
 - Scripted agents test the machinery, not strategy.
-- CARC steps are documented but not yet run on CARC (`docs/carc-setup.md`).
+- On CARC only the CPU path is verified (tests and demo, 2026-09-28); GPU and vLLM are not (`docs/carc-setup.md`).
 
 ## Example trace
 

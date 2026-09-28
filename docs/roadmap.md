@@ -9,7 +9,7 @@ Each milestone ends with something that runs and is tested. Dates are not fixed.
 - [x] `DISCUSSION` and `SIMULTANEOUS` proven with a test fixture
 - [x] One JSON file per episode; readable terminal trace; deterministic demo
 - [x] Optional LLM agents: mock, OpenRouter, vLLM (only the mock has been run)
-- [x] CARC setup documented; to be verified on CARC
+- [x] CARC setup documented and verified on a CPU compute node (2026-09-28)
 
 ## M2: a second real game with a different interaction structure
 

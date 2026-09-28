@@ -152,12 +152,13 @@ uv run python examples/run_coup.py --quiet --agents llm --backend mock    # the 
 | `SINGLE`, `RESPONSE_WINDOW` | `SIMULTANEOUS` (fixture) | Real-model experiments |
 | Scripted and random agents | | Private or team channels |
 | LLM agent with the mock backend | OpenRouter and vLLM clients (tested against a fake local server, never against a real model) | RL integration |
-| JSON logs, trace, deterministic seeds | | CARC setup (documented, not yet run) |
+| JSON logs, trace, deterministic seeds | | GPU and vLLM on CARC |
+| Runs on a CARC CPU compute node (tests and demo verified 2026-09-28) | | |
 
 Careful wording in the meeting:
 - Say "the LLM path is built and tested with a mock", not "LLMs play Coup".
 - Say "Sheriff would fit like this", not "Sheriff works".
-- Say "CARC setup is documented", not "CARC is set up".
+- Say "tests and the demo run on a CARC CPU node", not "we run models on CARC".
 
 ## O. Likely questions from Dhananjay
 
@@ -183,7 +184,7 @@ Careful wording in the meeting:
 > They can say something with every decision, including a pass. There is no free chat outside decisions yet. For games where talk is central, the discussion mode handles it.
 
 **Does it run on CARC?**
-> Not verified yet. I documented the setup from CARC's official guides. One finding: CARC blocks VS Code Remote-SSH on login nodes and asks people to run coding agents on compute nodes, so I'll develop on a CPU compute node. I need to know which project account to use.
+> Yes, on a CPU compute node. I cloned the repo on CARC, and on a debug node the tests pass and the Coup demo gives exactly the same game as on my laptop. GPU and vLLM are not tested yet. One finding: CARC blocks VS Code Remote-SSH on login nodes and asks people to run coding agents on compute nodes, so I develop on a compute node.
 
 **What would be the next game?**
 > Sheriff or Deception, because each uses a different interaction pattern from Coup. Which one fits the research question better?
