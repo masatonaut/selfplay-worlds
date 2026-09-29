@@ -54,11 +54,23 @@ def fake_server():
 def test_request_and_response_round_trip(fake_server):
     base_url, requests = fake_server
     backend = VLLMBackend(model="fake-model", base_url=base_url)
-    generation = backend.generate(messages=[{"role": "user", "content": "hi"}], max_tokens=20, temperature=0.0)
+    schema = {"type": "object", "properties": {"action": {"type": "integer"}}}
+    generation = backend.generate(
+        messages=[{"role": "user", "content": "hi"}],
+        max_tokens=20,
+        temperature=1.0,
+        top_p=0.95,
+        top_k=64,
+        json_schema=schema,
+    )
     assert generation.text == '{"action": 1}'
     assert generation.model == "fake-model"
     assert (generation.input_tokens, generation.output_tokens) == (12, 5)
     assert requests[0]["path"] == "/v1/chat/completions"
     assert requests[0]["body"]["model"] == "fake-model"
     assert requests[0]["body"]["max_tokens"] == 20
+    assert requests[0]["body"]["temperature"] == 1.0
+    assert requests[0]["body"]["top_p"] == 0.95
+    assert requests[0]["body"]["top_k"] == 64
+    assert requests[0]["body"]["response_format"]["json_schema"]["schema"] == schema
     assert requests[0]["body"]["messages"] == [{"role": "user", "content": "hi"}]

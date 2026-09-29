@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import os
 import time
+from typing import Any
 
 from selfplay_worlds.inference.base import Generation, InferenceBackend
 
@@ -32,11 +33,33 @@ class OpenAICompatibleBackend(InferenceBackend):
         self.base_url = base_url
         self._client = OpenAI(base_url=base_url, api_key=api_key, timeout=timeout)
 
-    def generate(self, *, messages: list[dict], max_tokens: int = 512, temperature: float = 0.7) -> Generation:
+    def generate(
+        self,
+        *,
+        messages: list[dict],
+        max_tokens: int = 512,
+        temperature: float = 0.7,
+        top_p: float | None = None,
+        top_k: int | None = None,
+        json_schema: dict[str, Any] | None = None,
+    ) -> Generation:
         start = time.perf_counter()
-        response = self._client.chat.completions.create(
-            model=self.model, messages=messages, max_tokens=max_tokens, temperature=temperature
-        )
+        request: dict[str, Any] = {
+            "model": self.model,
+            "messages": messages,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+        }
+        if top_p is not None:
+            request["top_p"] = top_p
+        if top_k is not None:
+            request["extra_body"] = {"top_k": top_k}
+        if json_schema is not None:
+            request["response_format"] = {
+                "type": "json_schema",
+                "json_schema": {"name": "agent_output", "schema": json_schema},
+            }
+        response = self._client.chat.completions.create(**request)
         usage = response.usage
         return Generation(
             text=response.choices[0].message.content or "",

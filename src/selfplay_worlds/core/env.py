@@ -86,6 +86,13 @@ class GameEnv(ABC):
     def config(self) -> dict[str, Any]:
         return {}
 
+    def state_dict(self) -> dict[str, Any]:
+        """Serializable runtime state for checkpoints."""
+        raise NotImplementedError(f"{type(self).__name__} does not support checkpoints")
+
+    def load_state_dict(self, data: dict[str, Any]) -> None:
+        raise NotImplementedError(f"{type(self).__name__} does not support checkpoints")
+
 
 @dataclass(frozen=True)
 class GameSpec:

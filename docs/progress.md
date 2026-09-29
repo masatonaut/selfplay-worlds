@@ -1,6 +1,6 @@
 # Progress
 
-_Last updated: 2026-09-28. Milestone 1 is pushed to `main` of the private GitHub repository `masatonaut/selfplay-worlds`, and the project is verified on a CARC CPU compute node._
+_Last updated: 2026-09-28. The typed-state and recovery refactor is present as uncommitted local work. No GPU job has been requested._
 
 ## DONE
 - Core framework: `GameEnv`, `Interaction` (4 modes), `Runner`, `AgentOutput`, `EpisodeLogger`, trace printer.
@@ -14,14 +14,17 @@ _Last updated: 2026-09-28. Milestone 1 is pushed to `main` of the private GitHub
 - Docs: README, architecture, design decisions, game matrix, references, roadmap, meeting demo.
 - GitHub: private repository `masatonaut/selfplay-worlds`; Milestone 1 pushed to `main` in 7 commits.
 - Checked on 2026-09-24 (on a Mac): tests pass (122 passed and 1 skipped without extras, 123 passed with `--extra llm`); the Coup demo runs.
+- Local refactor: `CoupState`, `CoupAction`, `CoupPhase`, `AgentState`, `Scheduler`, `DecisionEvent`, `EpisodeRecorder`, `CheckpointStore`, `GenerationConfig`, and `UsageTracker` are explicit. Deterministic checkpoint and resume is tested.
+- Local verification: 134 passed and 1 skipped without the optional LLM extra; 135 passed with `--extra llm`. The seed 0 scripted demo still produces Carol as winner after 14 turns.
+- Gemma 4 preparation: official sampling values and current vLLM structured output support were checked. Exact CARC commands are in `docs/carc-gemma4-runbook.md`. They have not been run.
 
 ## IN PROGRESS
 - Nothing.
 
 ## NEXT
-1. First real-model run through OpenRouter, a few games, to see invalid-output rates and cost.
-2. Decide whether to install Claude Code on CARC (not installed there; CARC's harness is).
-3. Milestone 2: pick the second game (Sheriff or Deception) and verify its rules.
+1. After explicit approval, run the prepared smallest CARC A100 80 GB allocation and verify Gemma 4 through vLLM.
+2. If one A100 80 GB cannot serve the model, stop and request approval for a two-GPU tensor-parallel run.
+3. Pick the second real game, Sheriff or Deception, and verify its rules.
 
 ## OPEN QUESTIONS
 - Which second game fits the research question better: Sheriff (negotiation) or Deception (discussion, roles)?

@@ -11,6 +11,7 @@ from selfplay_worlds.core.runner import Runner
 from selfplay_worlds.episodes.log import EpisodeLogger
 from selfplay_worlds.games import get_game
 from selfplay_worlds.inference import MockBackend
+from selfplay_worlds.inference.base import GenerationConfig
 
 LEGAL = [{"type": "income"}, {"type": "tax"}, {"type": "steal", "target": "p1"}]
 
@@ -22,7 +23,7 @@ LEGAL = [{"type": "income"}, {"type": "tax"}, {"type": "steal", "target": "p1"}]
         ('{"message": null, "action": "3"}', (None, {"type": "steal", "target": "p1"}, None)),
         ('```json\n{"message": "", "action": 1}\n```', (None, {"type": "income"}, None)),
         ('I will play safe. {"action": 1, "message": "Income."} Done.', ("Income.", {"type": "income"}, None)),
-        ('{"action": {"type": "tax"}}', (None, {"type": "tax"}, None)),
+        ('{"action": {"type": "tax"}}', (None, None, "could not read the action {'type': 'tax'}")),
         ('{"message": "Just talking."}', ("Just talking.", None, None)),
         ("I take income.", (None, None, "no JSON object found in the reply")),
         ('{"action": 9}', (None, None, "action number 9 is not between 1 and 3")),
@@ -97,6 +98,23 @@ def test_prompt_never_depends_on_other_players_hidden_cards():
         )
         prompts.append(json.dumps(backend.calls[0]))
     assert prompts[0] == prompts[1]
+
+
+def test_reasoning_mode_never_persists_raw_private_output():
+    backend = MockBackend(replies=['private reasoning then {"message": null, "action": 1}'])
+    env = new_game({"p0": ["duke", "captain"], "p1": ["contessa", "assassin"], "p2": ["ambassador", "duke"]})
+    agent = LLMAgent(
+        backend=backend,
+        spec=get_game("coup"),
+        generation_config=GenerationConfig(reasoning=True),
+    )
+    output = agent.act(
+        observation=env.observe(player_id="p0"),
+        interaction=env.current_interaction(),
+        legal_actions=env.legal_actions(player_id="p0"),
+    )
+    assert output.raw_model_output is None
+    assert output.metadata["reasoning_redacted"] is True
 
 
 def test_openrouter_needs_a_key_from_the_environment(monkeypatch):

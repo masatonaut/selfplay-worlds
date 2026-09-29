@@ -4,8 +4,8 @@ import pytest
 
 from selfplay_worlds.agents.base import Agent
 from selfplay_worlds.agents.scripted import RandomAgent, ScriptedAgent
-from selfplay_worlds.core.interaction import Interaction
 from selfplay_worlds.core.runner import Runner
+from selfplay_worlds.core.scheduler import Scheduler
 from selfplay_worlds.core.types import AgentOutput
 from selfplay_worlds.episodes.log import EpisodeLogger
 from selfplay_worlds.games import get_game
@@ -16,13 +16,14 @@ HANDS = {"p0": ["captain", "assassin"], "p1": ["duke", "contessa"], "p2": ["amba
 def eager_challenger(*, observation, interaction, legal_actions, rng):
     """Challenges whenever it can, otherwise takes the first legal action."""
     for action in legal_actions:
-        if action["type"] == "challenge":
+        if action.type.value == "challenge":
             return AgentOutput(action=action)
     return AgentOutput(action=legal_actions[0])
 
 
-def reverse_order(interaction: Interaction) -> list[str]:
-    return list(reversed(interaction.eligible_players))
+class ReverseScheduler(Scheduler):
+    def order(self, *, interaction):
+        return list(reversed(interaction.eligible_players))
 
 
 def _run(env, agents, **runner_kwargs):
@@ -40,6 +41,7 @@ class Recorder(Agent):
     """Returns queued outputs, then the first legal action. Records every call."""
 
     def __init__(self, outputs=()):
+        super().__init__()
         self.outputs = list(outputs)
         self.calls = []
 
@@ -74,17 +76,17 @@ def test_response_window_asks_in_environment_order_by_default():
     assert challenge["actor"] == "p1"
 
 
-def test_order_policy_changes_who_challenges_first():
-    """Same game, same agents: only the Runner's order policy differs."""
+def test_scheduler_changes_who_challenges_first():
+    """Same game, same agents: only the Scheduler differs."""
     agents = {
         "p0": ScriptedAgent(script=[AgentOutput(action={"type": "tax"})]),
         "p1": ScriptedAgent(policy=eager_challenger),
         "p2": ScriptedAgent(policy=eager_challenger),
     }
-    steps, record = _run(_fixed_env(), agents, order_policy=reverse_order)
+    steps, record = _run(_fixed_env(), agents, scheduler=ReverseScheduler())
     challenge = next(s for s in steps if s["output"]["action"] == {"type": "challenge"})
     assert challenge["actor"] == "p2"
-    assert record["config"]["runner"]["order_policy"] == "reverse_order"
+    assert record["config"]["runner"]["scheduler"] == "ReverseScheduler"
 
 
 def test_players_who_already_passed_are_not_asked_again():
@@ -108,6 +110,8 @@ def test_invalid_output_is_retried_with_the_environments_feedback():
     assert agents["p0"].calls[1]["feedback"] == steps[0]["error"]
     assert "illegal action" in steps[0]["error"]
     assert record["result"]["num_invalid_outputs"] == 1
+    assert agents["p0"].state.attempted_actions[:2] == [{"type": "fly"}, {"type": "income"}]
+    assert agents["p0"].state.accepted_actions[0] == {"type": "income"}
 
 
 def test_fallback_after_too_many_invalid_outputs():

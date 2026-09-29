@@ -14,12 +14,14 @@ uv run pytest                         # all tests; no network, API key or GPU ne
 uv run python examples/run_coup.py    # deterministic demo (seed 0)
 ```
 
-## Git and publishing: the owner does these, never the agent
+## Git and publishing
 
-- Do not run `git add`, `git commit`, `git push`, `git merge`, `git rebase`, `git reset`, create tags, or force push.
+- Normal commits and pushes to `main` are allowed after tests, diff review, and secret checks.
+- Before every push, verify the effective Git identity is `Masato Ito <66577866+masatonaut@users.noreply.github.com>`, the GitHub account is `masatonaut`, and the remote is `masatonaut/selfplay-worlds`.
+- Never force push, rewrite published history, or use destructive reset operations.
+- Never change GitHub authentication, SSH keys, credentials, or account permissions.
 - Do not add Co-Authored-By trailers or any AI attribution.
-- You may run `git status`, `git diff`, `git diff --stat` and `git log`, and propose commit groups and messages.
-- Do not publish anything, and do not remove unrelated files.
+- Do not remove unrelated files.
 
 ## Secrets
 

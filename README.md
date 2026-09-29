@@ -23,19 +23,22 @@ A framework built around one `current_player` and an alternating loop cannot exp
 flowchart TD
     ENV[GameEnv] -->|current interaction| INT[Interaction]
     INT --> RUN[Runner]
-    RUN -->|player observation, legal actions| AG[Agent]
+    RUN --> SCH[Scheduler]
+    RUN -->|player observation, typed legal actions| AG[Agent + AgentState]
     AG -.-> INF[InferenceBackend]
     INF -.-> AG
     AG -->|"AgentOutput(message, action)"| RUN
     RUN -->|step| ENV
-    RUN --> LOG[EpisodeLogger]
+    RUN --> LOG[EpisodeRecorder]
+    RUN --> CKPT[CheckpointStore]
 ```
 
-- **GameEnv** is the source of truth: rules, hidden state, legal actions, observations, result. It never calls a model.
+- **CoupEnv** owns one serializable **CoupState** and is the source of truth for rules, hidden state, legal actions, observations, and the result. It never calls a model.
 - **Interaction** says what is happening now: `phase` (game rule), `mode` (`SINGLE`, `RESPONSE_WINDOW`, `DISCUSSION`, `SIMULTANEOUS`), and who **may** act.
-- **Runner** decides who is **asked first**, retries invalid answers, and contains no game rules.
-- **Agent** sees only its own player's observation and returns a `message` and/or a structured `action`.
-- **InferenceBackend** (mock, OpenRouter, vLLM) is used only by LLM agents. **EpisodeLogger** writes one JSON file per game.
+- **Scheduler** decides who is **asked first**. The default is deterministic round robin.
+- **Runner** connects the components, retries invalid answers, and contains no game rules.
+- **Agent** owns a serializable `AgentState`, sees only its own player's observation, and returns a `message` and/or a structured action.
+- **InferenceBackend** (mock, OpenRouter, vLLM) is used only by LLM agents. **EpisodeRecorder** writes the research record. **CheckpointStore** writes recovery state separately.
 
 Details: [`docs/architecture.md`](docs/architecture.md).
 
@@ -46,7 +49,8 @@ Details: [`docs/architecture.md`](docs/architecture.md).
 - `SINGLE` and `RESPONSE_WINDOW` interactions
 - Scripted, random and LLM agents (LLM path run with the mock backend only)
 - One JSON episode log per game, readable terminal trace, deterministic seeds
-- 123 tests, no model, API key or GPU needed (one of them needs the optional `llm` extra)
+- 135 tests, no model, API key or GPU needed (one is skipped without the optional `llm` extra)
+- Typed Coup state, phases, and actions; per-agent state; usage budgets; atomic checkpoint and deterministic resume
 
 **TEST-SUPPORTED** (proven with a test fixture, no real game yet)
 - `DISCUSSION`
@@ -89,7 +93,7 @@ Agent decisions: 33, forced moves applied automatically: 3, invalid outputs: 0.
 Episode log: runs/coup-seed0-3p.json
 ```
 
-A sample episode file is committed at [`examples/output/coup-seed0-3p.json`](examples/output/coup-seed0-3p.json).
+A legacy schema 1.0 sample episode file is committed at [`examples/output/coup-seed0-3p.json`](examples/output/coup-seed0-3p.json). New runs use schema 2.0 and add aggregate inference usage.
 
 ### LLM agents (optional)
 
@@ -98,6 +102,7 @@ uv run python examples/run_coup.py --agents llm --backend mock            # whol
 export OPENROUTER_API_KEY=...                                             # never commit keys
 uv run --extra llm python examples/run_coup.py --agents llm --backend openrouter --model <model-id>
 uv run --extra llm python examples/run_coup.py --agents llm --backend vllm --model <served-model>   # VLLM_BASE_URL
+uv run --extra llm python examples/run_coup.py --agents llm --backend vllm --model google/gemma-4-31B-it --structured-output
 ```
 
 ## Adding a new game
@@ -116,20 +121,21 @@ The Runner, agents, logger and inference code do not change for a game that uses
 2. Agents see only player-specific observations.
 3. Interaction structure is explicit.
 4. Message and structured action are separate.
-5. Runner orchestration is independent of game rules.
-6. Every episode can be serialized.
-7. The inference backend is replaceable.
-8. RL is a future consumer, not part of the core environment.
+5. Scheduling is an experimental policy, separate from rules.
+6. Runner orchestration is independent of game rules.
+7. Episode records and recovery checkpoints have separate jobs.
+8. The inference backend is replaceable and usage is explicit.
+9. RL is a future consumer, not part of the core environment.
 
 ## Repository map
 
 ```text
 src/selfplay_worlds/
-  core/        GameEnv, Interaction, Runner, AgentOutput
-  agents/      ScriptedAgent, RandomAgent, LLMAgent
-  inference/   MockBackend, OpenRouterBackend, VLLMBackend
-  episodes/    EpisodeLogger (JSON), TracePrinter (terminal)
-  games/coup/  the Coup environment, rules text, prompts, scripted policy
+  core/        GameEnv, Interaction, Scheduler, Runner, AgentOutput, DecisionEvent
+  agents/      AgentState, ScriptedAgent, RandomAgent, LLMAgent
+  inference/   backends, GenerationConfig, UsageTracker
+  episodes/    EpisodeRecorder, CheckpointStore, TracePrinter
+  games/coup/  CoupEnv, CoupState, CoupAction, rules, prompts, scripted policy
 examples/      run_coup.py and a sample episode
 tests/         rule, runner, logging, LLM-path and stress tests; fixtures/ holds test-only environments
 docs/          architecture, design decisions, Coup rules, game matrix, CARC setup, roadmap, progress, meeting notes
@@ -145,3 +151,5 @@ scripts/carc/  environment check and an example Slurm proxy for CARC
 | [`docs/design-decisions.md`](docs/design-decisions.md) | decisions, alternatives and tradeoffs |
 | [`docs/meeting-demo.md`](docs/meeting-demo.md) | a 5-minute explanation and demo script |
 | [`docs/references.md`](docs/references.md) | what was reviewed (no code reused) |
+| [`docs/repo-walkthrough.md`](docs/repo-walkthrough.md) | the architecture in simple questions and one exact call path |
+| [`docs/carc-gemma4-runbook.md`](docs/carc-gemma4-runbook.md) | prepared Gemma 4 vLLM commands; GPU run still needs approval |

@@ -46,10 +46,10 @@ Lightweight ADR log. Each entry: **Decision / Why / Alternative / Tradeoff / Sta
 
 ## ADR-06 Message and action are separate
 
-- **Decision:** `AgentOutput` has `message` (natural language) and `action` (a structured dict) as separate optional fields.
+- **Decision:** `AgentOutput` has `message` (natural language) and `action` (a game-owned typed action) as separate optional fields. Actions serialize to plain dictionaries at log and checkpoint boundaries.
 - **Why:** Research may compare what an agent says with what it does. The environment only validates the action. The message is recorded as public table talk.
 - **Alternative:** Parse the action out of free text inside the environment.
-- **Tradeoff:** LLM agents must produce a structured action. The parser lives in the agent, not the game.
+- **Tradeoff:** LLM agents must select a structured action. The response parser lives in the agent, while structural and game-legality checks live in the environment.
 - **Status:** Accepted.
 
 ## ADR-07 Observation separate from full state
@@ -66,7 +66,7 @@ Lightweight ADR log. Each entry: **Decision / Why / Alternative / Tradeoff / Sta
 - **Why:** One file is easy to open, share, diff and later convert into training trajectories. Keeping full state optional keeps normal logs small and readable.
 - **Alternative:** A database, or one line per event (JSONL).
 - **Tradeoff:** Very long episodes produce large files. JSONL can be added later if needed.
-- **Status:** Accepted, schema version `1.0`.
+- **Status:** Accepted, schema version `2.0`.
 
 ## ADR-09 Deterministic scripted agents
 
@@ -118,9 +118,32 @@ Lightweight ADR log. Each entry: **Decision / Why / Alternative / Tradeoff / Sta
 
 ## ADR-15 LLM agents answer with the number of a legal action
 
-- **Decision:** The prompt lists the legal actions with numbers. The model replies with JSON `{"message": ..., "action": <number>}`. Copying the action object is also accepted. The parser never guesses: anything unreadable becomes "no action", the environment rejects it, and the Runner retries with feedback.
+- **Decision:** The prompt lists the legal actions with numbers. The model replies with JSON `{"message": ..., "action": <number>}`. The parser maps that number to the exact typed legal action and never accepts a model-invented action object. Anything unreadable becomes "no action", the environment rejects it, and the Runner retries with feedback.
 - **Why:** Choosing a number is the easiest format for a model to get right, and every failure is visible in the log as a rejected output with the raw text.
 - **Alternative:** Free-text actions parsed with fuzzy matching.
 - **Tradeoff:** The model cannot invent actions outside the list, which is the point.
 - **Status:** Accepted. Tested with `MockBackend`; not yet run against a real model.
 
+## ADR-16 Typed game-specific state and actions
+
+- **Decision:** `CoupEnv` owns one serializable `CoupState`. Coup actions are frozen `CoupAction` values with a Coup-specific enum and explicit `to_dict` and `from_dict` methods.
+- **Why:** State ownership, structural validity, and the action vocabulary are visible without forcing future games into Coup fields or enums.
+- **Alternative:** Keep runtime fields scattered across the environment and pass action dictionaries throughout the code.
+- **Tradeoff:** Each game must define its own small state and action serializers.
+- **Status:** Accepted. The generic core has only an `Action` protocol and does not contain Coup actions.
+
+## ADR-17 Recording and checkpointing are separate
+
+- **Decision:** `EpisodeRecorder` stores the research account of decisions. `CheckpointStore` stores versioned runtime snapshots after accepted decisions.
+- **Why:** Analysis data may omit private state, while safe recovery requires game state, agent state, RNG state, usage, and runner position.
+- **Alternative:** Make the episode log the live runtime state or build a full event-replay system.
+- **Tradeoff:** A checkpoint contains a copy of the partial episode record so a resumed run can continue one coherent output file.
+- **Status:** Accepted. Checkpoints are inspectable JSON written atomically with a temporary file and `os.replace`.
+
+## ADR-18 Agent experience is explicit
+
+- **Decision:** Each agent owns an `AgentState` containing the observations it saw, messages it produced, attempted actions, accepted actions, and validation feedback.
+- **Why:** Agent experience is not the same thing as true game state, and each player must resume independently even when all players share one inference server.
+- **Alternative:** Treat agents as stateless or serialize the live inference client.
+- **Tradeoff:** Checkpoints contain repeated observation history. They never contain private reasoning or live clients.
+- **Status:** Accepted.

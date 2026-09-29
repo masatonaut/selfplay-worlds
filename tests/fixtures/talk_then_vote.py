@@ -89,6 +89,28 @@ class TalkThenVoteEnv(GameEnv):
     def full_state(self) -> dict:
         return {"phase": self._phase, "spoken": self._spoken, "votes": dict(self._votes)}
 
+    def state_dict(self) -> dict:
+        return {
+            "ids": list(self._ids),
+            "spoken": self._spoken,
+            "votes": dict(self._votes),
+            "history": list(self._history),
+            "interaction_id": self._interaction_id,
+            "phase": self._phase,
+            "result": self._result.to_dict() if self._result else None,
+        }
+
+    def load_state_dict(self, data: dict) -> None:
+        self._ids = list(data["ids"])
+        self._spoken = data["spoken"]
+        self._votes = dict(data["votes"])
+        self._history = list(data["history"])
+        self._events = []
+        self._interaction_id = data["interaction_id"]
+        self._phase = data["phase"]
+        result = data["result"]
+        self._result = GameResult(**result) if result else None
+
     def step(self, *, player_id: str, output: AgentOutput) -> StepResult:
         interaction = self.current_interaction()
         if interaction is None:

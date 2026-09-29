@@ -17,12 +17,14 @@ Two more SINGLE phases interrupt a turn when needed:
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass, field
+from collections.abc import Mapping
 from itertools import combinations
+from typing import Any
 
 from selfplay_worlds.core.env import GameEnv
 from selfplay_worlds.core.interaction import Interaction, InteractionMode, MessagePolicy
-from selfplay_worlds.core.types import Action, AgentOutput, GameResult, StepResult
+from selfplay_worlds.core.types import AgentOutput, GameResult, StepResult
+from selfplay_worlds.games.coup.actions import CoupAction, CoupActionType
 from selfplay_worlds.games.coup.cards import (
     ACTIONS,
     COUP_COST,
@@ -30,6 +32,7 @@ from selfplay_worlds.games.coup.cards import (
     FULL_DECK,
     Card,
 )
+from selfplay_worlds.games.coup.state import CoupPhase, CoupPlayerState, CoupState, CoupTurnState
 
 DEFAULT_NAMES = ["Alice", "Bob", "Carol", "Dave", "Eve", "Frank"]
 DEFAULT_MAX_TURNS = 100
@@ -38,42 +41,17 @@ same moves (for example two lone Captains stealing from each other and
 blocking forever) still ends. See docs/coup-rules.md."""
 
 PHASE_MODES = {
-    "action": InteractionMode.SINGLE,
-    "challenge_action": InteractionMode.RESPONSE_WINDOW,
-    "block_action": InteractionMode.RESPONSE_WINDOW,
-    "challenge_block": InteractionMode.RESPONSE_WINDOW,
-    "lose_influence": InteractionMode.SINGLE,
-    "exchange": InteractionMode.SINGLE,
+    CoupPhase.ACTION: InteractionMode.SINGLE,
+    CoupPhase.CHALLENGE_ACTION: InteractionMode.RESPONSE_WINDOW,
+    CoupPhase.BLOCK_ACTION: InteractionMode.RESPONSE_WINDOW,
+    CoupPhase.CHALLENGE_BLOCK: InteractionMode.RESPONSE_WINDOW,
+    CoupPhase.LOSE_INFLUENCE: InteractionMode.SINGLE,
+    CoupPhase.EXCHANGE: InteractionMode.SINGLE,
 }
 
 
 def _coins(n: int) -> str:
     return "1 coin" if n == 1 else f"{n} coins"
-
-
-@dataclass
-class Player:
-    id: str
-    name: str
-    coins: int
-    hidden: list[Card]
-    revealed: list[Card] = field(default_factory=list)
-
-    @property
-    def alive(self) -> bool:
-        return bool(self.hidden)
-
-
-@dataclass
-class Turn:
-    """Facts about the turn in progress."""
-
-    actor: str
-    action: str | None = None
-    target: str | None = None
-    paid: int = 0
-    blocker: str | None = None
-    block_claim: Card | None = None
 
 
 class CoupEnv(GameEnv):
@@ -100,7 +78,105 @@ class CoupEnv(GameEnv):
         self._initial_hands = initial_hands
         self._initial_coins = initial_coins or {}
         self._starting_player = starting_player
-        self._phase: str | None = None
+        self.state: CoupState | None = None
+        self._events: list[str] = []
+
+    def _require_state(self) -> CoupState:
+        if self.state is None:
+            raise RuntimeError("Coup environment has not been reset")
+        return self.state
+
+    @property
+    def _players(self):
+        return self._require_state().players
+
+    @property
+    def _deck(self):
+        return self._require_state().deck
+
+    @property
+    def _turn(self):
+        return self._require_state().current_turn
+
+    @_turn.setter
+    def _turn(self, value):
+        self._require_state().current_turn = value
+
+    @property
+    def _phase(self):
+        return self.state.phase if self.state else None
+
+    @_phase.setter
+    def _phase(self, value):
+        self._require_state().phase = CoupPhase(value) if value is not None else None
+
+    @property
+    def _eligible(self):
+        return self._require_state().eligible_players
+
+    @_eligible.setter
+    def _eligible(self, value):
+        self._require_state().eligible_players = value
+
+    @property
+    def _loss_queue(self):
+        return self._require_state().loss_queue
+
+    @property
+    def _next(self):
+        return self._require_state().continuation
+
+    @_next.setter
+    def _next(self, value):
+        self._require_state().continuation = value
+
+    @property
+    def _exchange_draw(self):
+        return self._require_state().exchange_draw
+
+    @_exchange_draw.setter
+    def _exchange_draw(self, value):
+        self._require_state().exchange_draw = value
+
+    @property
+    def _winner(self):
+        return self._require_state().winner
+
+    @_winner.setter
+    def _winner(self, value):
+        self._require_state().winner = value
+
+    @property
+    def _turn_number(self):
+        return self._require_state().turn_number
+
+    @_turn_number.setter
+    def _turn_number(self, value):
+        self._require_state().turn_number = value
+
+    @property
+    def _interaction_id(self):
+        return self._require_state().interaction_id
+
+    @_interaction_id.setter
+    def _interaction_id(self, value):
+        self._require_state().interaction_id = value
+
+    @property
+    def _turn_limit_reached(self):
+        return self._require_state().turn_limit_reached
+
+    @_turn_limit_reached.setter
+    def _turn_limit_reached(self, value):
+        self._require_state().turn_limit_reached = value
+
+    @property
+    def _history(self):
+        return self._require_state().history
+
+    @property
+    def _start_player(self):
+        return self._require_state().start_player
 
     # ================================================================ lifecycle
 
@@ -121,26 +197,32 @@ class CoupEnv(GameEnv):
                 hands[pid] = [deck.pop(), deck.pop()]
 
         start = self._starting_player or ids[self._rng.randrange(self._num_players)]
-        self._players = [
-            Player(id=pid, name=name, coins=2, hidden=hands[pid]) for pid, name in zip(ids, self._names, strict=True)
+        players = [
+            CoupPlayerState(id=pid, name=name, coins=2, hidden=hands[pid])
+            for pid, name in zip(ids, self._names, strict=True)
         ]
+        self.state = CoupState(
+            players=players,
+            deck=deck,
+            current_turn=None,
+            phase=None,
+            eligible_players=[],
+            loss_queue=[],
+            continuation=None,
+            exchange_draw=[],
+            winner=None,
+            turn_number=0,
+            interaction_id=0,
+            turn_limit_reached=False,
+            start_player=start,
+            history=[],
+            rng_state=self._rng.getstate(),
+        )
         if self._num_players == 2:
             self._p(start).coins = 1  # rulebook: the starting player receives only 1 coin
         for pid, amount in self._initial_coins.items():
             self._p(pid).coins = amount
-        self._deck = deck
-        self._history: list[str] = []
         self._events: list[str] = []
-        self._interaction_id = 0
-        self._turn_number = 0
-        self._turn: Turn | None = None
-        self._eligible: list[str] = []
-        self._loss_queue: list[tuple[str, str]] = []  # (player_id, reason)
-        self._next: str | None = None  # continuation once the loss queue is empty
-        self._exchange_draw: list[Card] = []
-        self._winner: str | None = None
-        self._turn_limit_reached = False
-        self._start_player = start
         self._emit(f"Game starts with {self._num_players} players. {self._p(start).name} goes first.")
         self._start_turn(start)
 
@@ -168,44 +250,51 @@ class CoupEnv(GameEnv):
             return None
         return Interaction(
             interaction_id=self._interaction_id,
-            phase=self._phase,
+            phase=self._phase.value,
             mode=PHASE_MODES[self._phase],
             eligible_players=tuple(self._eligible),
             message_policy=MessagePolicy.OPTIONAL,
             description=self._describe_interaction(),
         )
 
-    def legal_actions(self, *, player_id: str) -> list[Action]:
+    def legal_actions(self, *, player_id: str) -> list[CoupAction]:
         if self._phase is None or player_id not in self._eligible:
             return []
         me = self._p(player_id)
         if self._phase == "action":
             return self._legal_turn_actions(me)
         if self._phase in ("challenge_action", "challenge_block"):
-            return [{"type": "pass"}, {"type": "challenge"}]
+            return [CoupAction(CoupActionType.PASS), CoupAction(CoupActionType.CHALLENGE)]
         if self._phase == "block_action":
             rule = ACTIONS[self._turn.action]
-            return [{"type": "pass"}] + [{"type": "block", "claim": c.value} for c in rule.blockers]
+            return [CoupAction(CoupActionType.PASS)] + [
+                CoupAction(CoupActionType.BLOCK, claim=card) for card in rule.blockers
+            ]
         if self._phase == "lose_influence":
-            return [{"type": "reveal", "card": c.value} for c in dict.fromkeys(me.hidden)]
+            return [CoupAction(CoupActionType.REVEAL, card=card) for card in dict.fromkeys(me.hidden)]
         if self._phase == "exchange":
             return self._legal_keeps(me)
         raise AssertionError(self._phase)
 
-    def _legal_turn_actions(self, me: Player) -> list[Action]:
+    def _legal_turn_actions(self, me: CoupPlayerState) -> list[CoupAction]:
         others = [p.id for p in self._players if p.alive and p.id != me.id]
-        coup = [{"type": "coup", "target": t} for t in others]
+        coup = [CoupAction(CoupActionType.COUP, target=target) for target in others]
         if me.coins >= FORCED_COUP_COINS:
             return coup  # rulebook: 10 or more coins at the start of the turn forces a Coup
-        actions: list[Action] = [{"type": "income"}, {"type": "foreign_aid"}, {"type": "tax"}, {"type": "exchange"}]
-        actions += [{"type": "steal", "target": t} for t in others]
+        actions = [
+            CoupAction(CoupActionType.INCOME),
+            CoupAction(CoupActionType.FOREIGN_AID),
+            CoupAction(CoupActionType.TAX),
+            CoupAction(CoupActionType.EXCHANGE),
+        ]
+        actions += [CoupAction(CoupActionType.STEAL, target=target) for target in others]
         if me.coins >= ACTIONS["assassinate"].cost:
-            actions += [{"type": "assassinate", "target": t} for t in others]
+            actions += [CoupAction(CoupActionType.ASSASSINATE, target=target) for target in others]
         if me.coins >= COUP_COST:
             actions += coup
         return actions
 
-    def _legal_keeps(self, me: Player) -> list[Action]:
+    def _legal_keeps(self, me: CoupPlayerState) -> list[CoupAction]:
         pool = me.hidden + self._exchange_draw
         options: list[list[str]] = []
         for combo in combinations(range(len(pool)), len(me.hidden)):
@@ -214,7 +303,7 @@ class CoupEnv(GameEnv):
                 options.append(cards)
         current = sorted(c.value for c in me.hidden)
         options.sort(key=lambda cards: cards != current)  # keeping the current hand is listed first
-        return [{"type": "keep", "cards": cards} for cards in options]
+        return [CoupAction(CoupActionType.KEEP, cards=tuple(Card(card) for card in cards)) for cards in options]
 
     # ============================================================ information
 
@@ -249,7 +338,7 @@ class CoupEnv(GameEnv):
         return {
             "turn": self._turn_number,
             "current_player": turn.actor if turn else None,
-            "phase": self._phase,
+            "phase": self._phase.value if self._phase else None,
             "players": [
                 {
                     "id": p.id,
@@ -280,7 +369,7 @@ class CoupEnv(GameEnv):
                 for p in self._players
             ],
             "deck": [c.value for c in self._deck],
-            "phase": self._phase,
+            "phase": self._phase.value if self._phase else None,
             "eligible": list(self._eligible),
             "turn": self._turn_number,
             "loss_queue": [list(item) for item in self._loss_queue],
@@ -288,6 +377,18 @@ class CoupEnv(GameEnv):
             "winner": self._winner,
             "turn_limit_reached": self._turn_limit_reached,
         }
+
+    def state_dict(self) -> dict[str, Any]:
+        if self.state is None:
+            raise RuntimeError("Coup environment has not been reset")
+        self.state.rng_state = self._rng.getstate()
+        return self.state.to_dict()
+
+    def load_state_dict(self, data: dict[str, Any]) -> None:
+        self.state = CoupState.from_dict(data)
+        self._rng = random.Random()
+        self._rng.setstate(self.state.rng_state)
+        self._events = []
 
     def result(self) -> GameResult | None:
         if self._turn_limit_reached:
@@ -311,12 +412,9 @@ class CoupEnv(GameEnv):
             return StepResult(accepted=False, error="the game is over")
         if player_id not in self._eligible:
             return StepResult(accepted=False, error=f"{player_id} may not act in phase {self._phase!r}")
-        action = self._normalise(output.action)
-        legal = self.legal_actions(player_id=player_id)
-        if action is None:
-            return StepResult(accepted=False, error="no action given")
-        if action not in legal:
-            return StepResult(accepted=False, error=f"illegal action {action}; legal actions are {legal}")
+        action, error = self.validate_action(player_id=player_id, action=output.action)
+        if error is not None:
+            return StepResult(accepted=False, error=error)
 
         self._events = []
         if output.message and output.message.strip():
@@ -330,29 +428,38 @@ class CoupEnv(GameEnv):
             "exchange": self._on_exchange,
         }[self._phase]
         handler(player_id, action)
+        self.state.rng_state = self._rng.getstate()
         return StepResult(accepted=True, public_events=list(self._events))
 
-    @staticmethod
-    def _normalise(action: Action | None) -> Action | None:
-        if not isinstance(action, dict) or "type" not in action:
-            return None
-        if action.get("type") == "keep" and isinstance(action.get("cards"), list):
-            return {"type": "keep", "cards": sorted(str(c) for c in action["cards"])}
-        return dict(action)
+    def validate_action(
+        self, *, player_id: str, action: object
+    ) -> tuple[CoupAction | None, str | None]:
+        """Check structure first, then legality in the current state."""
+        if action is None:
+            return None, "no action given"
+        try:
+            typed = action if isinstance(action, CoupAction) else CoupAction.from_dict(action)  # type: ignore[arg-type]
+        except (TypeError, ValueError) as error:
+            prefix = "no action given" if not isinstance(action, Mapping) else "illegal action"
+            return None, f"{prefix}: invalid Coup action structure: {error}"
+        legal = self.legal_actions(player_id=player_id)
+        if typed not in legal:
+            return None, f"illegal action {typed.to_dict()}; legal actions are {[item.to_dict() for item in legal]}"
+        return typed, None
 
     # ------------------------------------------------------------- the turn
 
     def _start_turn(self, actor: str) -> None:
         self._turn_number += 1
-        self._turn = Turn(actor=actor)
+        self._turn = CoupTurnState(actor=actor)
         me = self._p(actor)
         self._emit(f"Turn {self._turn_number}: {me.name} ({_coins(me.coins)})")
         self._open("action", [actor])
 
-    def _on_action(self, actor: str, action: Action) -> None:
-        rule = ACTIONS[action["type"]]
+    def _on_action(self, actor: str, action: CoupAction) -> None:
+        rule = ACTIONS[action.type]
         turn = self._turn
-        turn.action, turn.target = rule.name, action.get("target")
+        turn.action, turn.target = CoupActionType(rule.name), action.target
         me = self._p(actor)
         if rule.cost:
             me.coins -= rule.cost
@@ -365,8 +472,8 @@ class CoupEnv(GameEnv):
         else:
             self._resolve_action()
 
-    def _on_challenge_action(self, player: str, action: Action) -> None:
-        if action["type"] == "pass":
+    def _on_challenge_action(self, player: str, action: CoupAction) -> None:
+        if action.type is CoupActionType.PASS:
             self._pass(player)
             if not self._eligible:
                 self._action_claim_survives()
@@ -403,19 +510,19 @@ class CoupEnv(GameEnv):
         eligible = self._others_after(turn.actor) if rule.block_by_anyone else [turn.target]
         self._open("block_action", eligible)
 
-    def _on_block_action(self, player: str, action: Action) -> None:
-        if action["type"] == "pass":
+    def _on_block_action(self, player: str, action: CoupAction) -> None:
+        if action.type is CoupActionType.PASS:
             self._pass(player, text="does not block")
             if not self._eligible:
                 self._resolve_action()
             return
         turn = self._turn
-        turn.blocker, turn.block_claim = player, Card(action["claim"])
+        turn.blocker, turn.block_claim = player, action.claim
         self._emit(f"{self._p(player).name} claims {turn.block_claim.label} to block.")
         self._open("challenge_block", self._others_after(player))
 
-    def _on_challenge_block(self, player: str, action: Action) -> None:
-        if action["type"] == "pass":
+    def _on_challenge_block(self, player: str, action: CoupAction) -> None:
+        if action.type is CoupActionType.PASS:
             self._pass(player)
             if not self._eligible:
                 self._block_stands()
@@ -466,10 +573,10 @@ class CoupEnv(GameEnv):
             self._emit(f"{me.name} now has {_coins(me.coins)}.")
         self._end_turn()
 
-    def _on_exchange(self, player: str, action: Action) -> None:
+    def _on_exchange(self, player: str, action: CoupAction) -> None:
         me = self._p(player)
         rest = me.hidden + self._exchange_draw
-        keep = [Card(c) for c in action["cards"]]
+        keep = list(action.cards)
         for card in keep:
             rest.remove(card)
         me.hidden = keep
@@ -521,10 +628,10 @@ class CoupEnv(GameEnv):
             "end_turn": self._end_turn,
         }[step]()
 
-    def _on_lose_influence(self, player: str, action: Action) -> None:
+    def _on_lose_influence(self, player: str, action: CoupAction) -> None:
         me = self._p(player)
         _, reason = self._loss_queue.pop(0)
-        card = Card(action["card"])
+        card = action.card
         me.hidden.remove(card)
         me.revealed.append(card)
         self._emit(f"{me.name} loses an influence ({reason}) and reveals {card.label}.")
@@ -562,7 +669,7 @@ class CoupEnv(GameEnv):
 
     # ---------------------------------------------------------------- helpers
 
-    def _p(self, player_id: str) -> Player:
+    def _p(self, player_id: str) -> CoupPlayerState:
         for p in self._players:
             if p.id == player_id:
                 return p
@@ -575,8 +682,8 @@ class CoupEnv(GameEnv):
         ordered = [seats[(i + k) % len(seats)] for k in range(1, len(seats))]
         return [pid for pid in ordered if self._p(pid).alive]
 
-    def _open(self, phase: str, eligible: list[str]) -> None:
-        self._phase = phase
+    def _open(self, phase: CoupPhase | str, eligible: list[str]) -> None:
+        self._phase = CoupPhase(phase)
         self._eligible = list(eligible)
         self._interaction_id += 1
 
@@ -588,7 +695,7 @@ class CoupEnv(GameEnv):
         self._history.append(text)
         self._events.append(text)
 
-    def _describe_declaration(self, me: Player, action: str, target: str | None) -> str:
+    def _describe_declaration(self, me: CoupPlayerState, action: str, target: str | None) -> str:
         t = self._p(target).name if target else ""
         return {
             "income": f"{me.name} takes Income.",

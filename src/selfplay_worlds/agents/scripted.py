@@ -34,6 +34,7 @@ class ScriptedAgent(Agent):
         seed: int = 0,
         label: str | None = None,
     ) -> None:
+        super().__init__()
         self._policy = policy or first_legal_policy
         self._script = list(script or [])
         self._rng = random.Random(seed)
@@ -49,13 +50,47 @@ class ScriptedAgent(Agent):
     def describe(self) -> dict:
         return {"type": "ScriptedAgent", "policy": self._label, "model": None, "backend": None}
 
+    def state_dict(self) -> dict:
+        data = super().state_dict()
+        data["implementation"] = {
+            "rng_state": self._rng.getstate(),
+            "remaining_script": [output.to_dict() for output in self._script],
+        }
+        return data
+
+    def load_state_dict(self, data: dict) -> None:
+        super().load_state_dict(data)
+        implementation = data.get("implementation", {})
+        if "rng_state" in implementation:
+            self._rng.setstate(_tuples(implementation["rng_state"]))
+        if "remaining_script" in implementation:
+            self._script = [AgentOutput(**output) for output in implementation["remaining_script"]]
+
 
 class RandomAgent(Agent):
     """Uniformly random legal action. Useful for stress tests, not for demos."""
 
     def __init__(self, *, seed: int = 0) -> None:
+        super().__init__()
         self._rng = random.Random(seed)
 
     def act(self, *, observation, interaction: Interaction, legal_actions: list[Action], feedback=None) -> AgentOutput:
         message = "(random)" if interaction.message_policy is MessagePolicy.REQUIRED else None
         return AgentOutput(action=self._rng.choice(legal_actions), message=message)
+
+    def state_dict(self) -> dict:
+        data = super().state_dict()
+        data["implementation"] = {"rng_state": self._rng.getstate()}
+        return data
+
+    def load_state_dict(self, data: dict) -> None:
+        super().load_state_dict(data)
+        implementation = data.get("implementation", {})
+        if "rng_state" in implementation:
+            self._rng.setstate(_tuples(implementation["rng_state"]))
+
+
+def _tuples(value):
+    if isinstance(value, list):
+        return tuple(_tuples(item) for item in value)
+    return value

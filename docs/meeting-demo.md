@@ -14,7 +14,7 @@ A script for explaining the project in 5 minutes. Simple English first, then Jap
 >
 > **Design.** So every decision point is an *Interaction*. It has a phase, which is game-specific, a mode, which is one of four general patterns, and the list of players who may act. The environment is the source of truth: it holds the hidden state, checks legality, and never calls a model. The runner decides who to ask first and handles invalid answers, and it contains no game rules. Agents see only their own player's observation, and they return a message and a structured action separately.
 >
-> **Coup.** Coup has explicit phases: the action, a challenge window, a block window, a window to challenge the block, and the resolution. I checked the rules against two rulebook transcriptions and wrote down where we had to interpret. There are 123 tests, including 500 random games that check invariants after every step.
+> **Coup.** Coup has explicit phases: the action, a challenge window, a block window, a window to challenge the block, and the resolution. I checked the rules against two rulebook transcriptions and wrote down where we had to interpret. The state, phase, and actions are typed and serializable. There are 135 tests, including 500 random games that check invariants after every step.
 >
 > **Next.** Discussion and simultaneous moves already work in the runner, but they are only tested with a small fixture. The next step would be a second real game with a different structure, Sheriff or Deception, and then running real models.
 
@@ -68,7 +68,7 @@ A script for explaining the project in 5 minutes. Simple English first, then Jap
 uv run pytest
 ```
 
-Point at: `122 passed, 1 skipped` (the skipped test needs the optional LLM package). Say: "Everything is tested without any model, API key or GPU."
+Point at the current pytest summary. Say: "Everything except the optional client import test runs without any model, API key or GPU."
 
 **Step 2: run one game**
 

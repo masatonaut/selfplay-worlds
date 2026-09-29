@@ -17,19 +17,25 @@ Games differ not only in their rules but in **who is allowed to act, and when**.
 | Agents must not see hidden information | Agents receive `observe(player)`, never `full_state()`; tested |
 | Talk and moves must be comparable | `AgentOutput` keeps `message` and `action` apart |
 | Testable without models, keys or GPUs | Seeded scripted and random agents; `MockBackend` |
-| Every game can be analysed later | One versioned JSON file per episode |
-| Small enough to explain in five minutes | Six components, one file each |
+| Every game can be analysed later | One versioned JSON episode record |
+| Interrupted runs can resume | A separate versioned checkpoint after each accepted decision |
+| Model use is bounded and visible | One `UsageTracker` with optional hard limits |
+| Small enough to explain | Each major class has one sentence in `docs/repo-walkthrough.md` |
 
 ## Components
 
 | Component | File | Responsible for | Never does |
 |---|---|---|---|
-| **GameEnv** | `core/env.py` | True state, rules, legal actions, player observations, transitions, result | Call a model; decide who is asked first |
+| **GameEnv** | `core/env.py` | Rules, legal actions, player observations, transitions, result | Call a model; decide who is asked first |
+| **CoupState** | `games/coup/state.py` | Serializable truth for one Coup game, including RNG state | Filter observations; call agents |
 | **Interaction** | `core/interaction.py` | Describes the open decision point: `phase`, `mode`, `eligible_players`, `message_policy` | Contain game logic |
-| **Runner** | `core/runner.py` | Asks the environment what is open, asks eligible agents in some order, passes their outputs to `env.step`, retries invalid outputs | Contain game rules |
-| **Agent** | `agents/` | Turns one player's observation into an `AgentOutput` (message and/or action) | See hidden state |
+| **Scheduler** | `core/scheduler.py` | Orders eligible agents for an interaction | Decide eligibility or game outcomes |
+| **Runner** | `core/runner.py` | Connects interaction, scheduler, observation, agent, step, record, and checkpoint | Contain game rules or prompt text |
+| **Agent** | `agents/` | Owns `AgentState` and turns one player's observation into an `AgentOutput` | See hidden state or serialize a live backend |
 | **InferenceBackend** | `inference/` | Sends chat messages to a model, returns text and token counts | Know anything about games |
-| **EpisodeLogger** | `episodes/log.py` | Records every step and the result as one JSON file | Change the game |
+| **EpisodeRecorder** | `episodes/log.py` | Records every attempt and result as research JSON | Own runtime game state |
+| **CheckpointStore** | `episodes/checkpoint.py` | Atomically saves and restores project state | Be the research record or save live clients |
+| **UsageTracker** | `inference/usage.py` | Aggregates calls, tokens, latency, optional reported cost, and limits | Guess monetary cost |
 
 A game plugs in through one `GameSpec` (`core/env.py`): a constructor, a plain-language rules text, a function that renders an observation as prompt text, and a default scripted policy. `games/__init__.py` lists the known games.
 
@@ -38,13 +44,15 @@ A game plugs in through one `GameSpec` (`core/env.py`): a constructor, a plain-l
 ```mermaid
 flowchart TD
     ENV["GameEnv<br/>(rules, true state)"] -->|"current_interaction()"| INT["Interaction<br/>phase, mode, eligible players"]
-    INT --> RUN["Runner<br/>who is asked first, retries"]
+    INT --> RUN["Runner<br/>thin orchestration"]
+    RUN --> SCH["Scheduler<br/>who is asked first"]
     RUN -->|"observe(player), legal_actions(player)"| AG["Agent<br/>scripted, random or LLM"]
     AG -.->|"chat messages"| INF["InferenceBackend<br/>mock, OpenRouter, vLLM"]
     INF -.->|"text"| AG
     AG -->|"AgentOutput(message, action)"| RUN
     RUN -->|"step(player, output)"| ENV
-    RUN --> LOG["EpisodeLogger<br/>one JSON per episode"]
+    RUN --> LOG["EpisodeRecorder<br/>research JSON"]
+    RUN --> CKPT["CheckpointStore<br/>recovery snapshot"]
 ```
 
 Dotted arrows exist only for LLM agents. Scripted and random agents never touch the inference layer, which is why every test runs without a model, a network or a GPU.
@@ -56,7 +64,7 @@ Environment answers:  WHO MAY act right now, and WHAT is legal?
 Runner answers:       WHO DO WE ASK FIRST, and what happens if an answer is invalid?
 ```
 
-Why the split matters: in a Coup challenge window, whoever is asked first and challenges closes the window for everyone else. Physical play has no fixed order, so the order is an **experimental choice**, not a rule. Because it lives in the Runner (`order_policy`), we can change it without touching any game code. `tests/test_runner.py::test_order_policy_changes_who_challenges_first` runs the same game with the reverse order and gets a different challenger.
+Why the split matters: in a Coup challenge window, whoever is asked first and challenges closes the window for everyone else. Physical play has no fixed order, so the order is an **experimental choice**, not a rule. Because it lives in a `Scheduler`, we can change it without touching any game code. `tests/test_runner.py::test_scheduler_changes_who_challenges_first` and `tests/test_architecture_state.py::test_scheduler_can_change_first_discussion_speaker` exercise that interface.
 
 ## Mode vs phase
 
@@ -124,18 +132,19 @@ The same four modes cover all three; only the phases and rules change. Details i
 ## Data flow of one decision
 
 1. `env.current_interaction()` returns the open interaction, or `None` when the game is over.
-2. The Runner orders the eligible players with `order_policy`.
+2. The Scheduler orders the eligible players.
 3. For the next player still eligible: `env.observe(player)` and `env.legal_actions(player)`.
 4. If exactly one action is legal and no message is required, the Runner applies it (`auto`). Otherwise it calls `agent.act(...)`.
-5. `env.step(player, output)` returns `StepResult(accepted, error, public_events)`.
+5. `env.step(player, output)` validates structure and game legality, applies the transition, and returns `StepResult(accepted, error, public_events)`.
 6. If rejected: the Runner asks the agent again with `feedback=error` (default 2 retries), then falls back to the first legal action (the most conservative one, for example `pass`).
-7. Every attempt, accepted or not, goes to the EpisodeLogger and the optional trace printer.
+7. Every attempt, accepted or not, becomes a typed `DecisionEvent` for the `EpisodeRecorder` and optional trace printer.
+8. Every accepted decision triggers an atomic `CheckpointStore` snapshot.
 
 ## Message vs action
 
 ```text
 message: "I'm the Duke. I'll take three coins."     <- free text, public, never validated as a move
-action:  {"type": "tax"}                            <- structured, validated by the environment
+action:  CoupAction(type=CoupActionType.TAX)         <- typed, validated by the environment
 ```
 
 - The environment checks only the action. The message goes into the public history as table talk.
@@ -154,9 +163,9 @@ action:  {"type": "tax"}                            <- structured, validated by 
 
 Tests check this two ways: the observation contains none of the god-view keys, and two games that differ only in other players' hidden cards produce identical observations and identical LLM prompts (`tests/test_coup_observation.py`, `tests/test_llm_agent.py`).
 
-## Logging
+## Recording and checkpointing
 
-One JSON file per episode, schema version `1.0` (`episodes/log.py`). Top level:
+One JSON file per episode, schema version `2.0` (`episodes/log.py`). Top level:
 
 ```text
 schema_version, game, episode_id, created_at, seed,
@@ -172,14 +181,17 @@ result {winners, payoffs, termination_reason, num_events, num_agent_calls,
 
 - `output` always keeps `message`, `action`, `raw_model_output` and `metadata` apart, so "what the agent said" and "what it did" can be compared later.
 - `player_observation` is exactly what the acting player saw, so it contains that player's own cards. The log is a research record, not a public transcript.
-- Rejected outputs are logged too (`accepted: false`), which makes format errors measurable.
+- Rejected outputs are recorded too (`accepted: false`), which makes format errors measurable.
 - The public history is stored once (`public_log`); each event keeps only `history_length`.
+- Inference usage is aggregated in the result. For local vLLM, `cost_usd` remains `null` unless a provider reports a real cost.
+
+`CheckpointStore` has a different responsibility. It saves `CoupState`, every `AgentState`, runner position, usage, seed, configuration, and the partial episode record. It writes JSON to a temporary file, calls `fsync`, and replaces the destination atomically. It never serializes a live OpenAI client. `--resume` restores the latest accepted decision.
 
 Example: `examples/output/coup-seed0-3p.json`.
 
 ## Inference
 
-`InferenceBackend.generate(messages=..., max_tokens=..., temperature=...)` is the whole interface.
+`InferenceBackend.generate(...)` accepts messages and explicit generation settings. `GenerationConfig` keeps sampling outside `LLMAgent`. `UsageTracker` aggregates returned metadata and enforces optional call and token limits before later calls.
 
 | Backend | Where the model runs | Needs |
 |---|---|---|
@@ -187,7 +199,7 @@ Example: `examples/output/coup-seed0-3p.json`.
 | `OpenRouterBackend` | OpenRouter's servers | `uv sync --extra llm`, `OPENROUTER_API_KEY` |
 | `VLLMBackend` | a vLLM server you started (for example on a CARC GPU node) | `uv sync --extra llm`, `VLLM_BASE_URL` |
 
-`LLMAgent` builds the prompt from the game's `rules_text` and `render_observation`, asks for `{"message": ..., "action": <number>}`, and parses the reply without guessing. Token counts, latency and parse errors go into the log.
+`LLMAgent` builds the prompt from the game's `rules_text` and `render_observation`, asks for `{"message": ..., "action": <number>}`, and maps the number to the exact legal object without guessing. It does not accept model-invented action dictionaries. Token counts, latency and parse errors go into the record. JSON schema output is optional. Gemma 4 uses `temperature=1.0`, `top_p=0.95`, and `top_k=64`; thinking is disabled for the baseline.
 
 ## Extension points: adding a game
 

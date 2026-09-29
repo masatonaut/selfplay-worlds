@@ -4,7 +4,7 @@ Each milestone ends with something that runs and is tested. Dates are not fixed.
 
 ## M1: generic framework and Coup (this milestone)
 
-- [x] `GameEnv`, `Interaction`, `Runner`, `Agent`, `InferenceBackend`, `EpisodeLogger`
+- [x] `GameEnv`, typed `CoupState` and `CoupAction`, `Interaction`, `Scheduler`, `Runner`, `AgentState`, `InferenceBackend`, `EpisodeRecorder`, and `CheckpointStore`
 - [x] Coup end-to-end with explicit phases, 2 to 6 players, rule tests and random-game stress tests
 - [x] `DISCUSSION` and `SIMULTANEOUS` proven with a test fixture
 - [x] One JSON file per episode; readable terminal trace; deterministic demo

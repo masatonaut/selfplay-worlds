@@ -206,6 +206,8 @@ Host github.com
 
 ## 6. Local vLLM (later)
 
+The exact prepared Gemma 4 procedure is in [`docs/carc-gemma4-runbook.md`](carc-gemma4-runbook.md). It has not been executed and its Slurm allocation requires explicit owner approval.
+
 Nothing in this repository starts a model server. When a local model is needed ([NOT YET VERIFIED], none of this has been run):
 
 ```bash
@@ -222,7 +224,7 @@ export VLLM_BASE_URL=http://localhost:8000/v1
 uv run --extra llm python examples/run_coup.py --agents llm --backend vllm --model <model_id>
 ```
 
-Open questions: which CUDA and driver versions the GPU nodes provide, which vLLM build matches them, and where model weights should be cached.
+The current CARC guides now document a vLLM 0.28 CUDA 12.9 wheel and Gemma 4 examples. We still need to inspect the lab's existing environment and agree on the model cache location before installing or downloading anything.
 
 ## 7. OpenRouter key
 

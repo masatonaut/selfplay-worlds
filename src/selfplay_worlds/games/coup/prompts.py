@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 
+from selfplay_worlds.core.types import action_to_dict
+
 RULES_TEXT = """You are playing Coup, a bluffing card game. The last player with any face-down cards wins.
 
 Each player has hidden character cards (influence) and coins. On your turn you take exactly one action:
@@ -24,7 +26,7 @@ You may also say something to the table. Talk is public and never binding."""
 HISTORY_WINDOW = 40
 
 
-def render_observation(*, observation: dict, interaction, legal_actions: list[dict]) -> str:
+def render_observation(*, observation: dict, interaction, legal_actions: list) -> str:
     lines = [
         f"You are {observation['your_name']} ({observation['you']}).",
         f"Your hidden cards: {', '.join(observation['your_cards']) or 'none'}. Your coins: {observation['your_coins']}.",
@@ -46,5 +48,5 @@ def render_observation(*, observation: dict, interaction, legal_actions: list[di
     lines.append("")
     lines.append(f"Current decision [{interaction.phase}]: {interaction.description}")
     lines.append("Legal actions:")
-    lines.extend(f"{i}. {json.dumps(a)}" for i, a in enumerate(legal_actions, 1))
+    lines.extend(f"{i}. {json.dumps(action_to_dict(action))}" for i, action in enumerate(legal_actions, 1))
     return "\n".join(lines)

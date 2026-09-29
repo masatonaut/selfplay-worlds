@@ -10,6 +10,7 @@ from fixtures.talk_then_vote import TalkThenVoteEnv
 from selfplay_worlds.agents.base import Agent
 from selfplay_worlds.core.interaction import InteractionMode
 from selfplay_worlds.core.runner import Runner
+from selfplay_worlds.core.scheduler import Scheduler
 from selfplay_worlds.core.types import AgentOutput
 from selfplay_worlds.episodes.log import EpisodeLogger
 
@@ -18,6 +19,7 @@ class Talker(Agent):
     """Speaks in the discussion and votes for a fixed player."""
 
     def __init__(self, name, vote_for, env=None):
+        super().__init__()
         self.name, self.vote_for, self.env = name, vote_for, env
         self.vote_calls = []
 
@@ -48,9 +50,13 @@ def test_discussion_repeats_the_order_until_the_environment_closes_it():
 
 
 def test_who_speaks_when_is_a_runner_decision():
+    class P2First(Scheduler):
+        def order(self, *, interaction):
+            return ["p2", "p0", "p1"]
+
     env = TalkThenVoteEnv(rounds=1)
     agents = {"p0": Talker("p0", "p1"), "p1": Talker("p1", "p2"), "p2": Talker("p2", "p1")}
-    _, steps, _ = _play(env, agents, order_policy=lambda interaction: ["p2", "p0", "p1"])
+    _, steps, _ = _play(env, agents, scheduler=P2First())
     talk = [s["actor"] for s in steps if s["interaction"]["mode"] == "discussion"]
     assert talk == ["p2", "p0", "p1"]
 

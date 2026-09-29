@@ -2,12 +2,26 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Protocol, runtime_checkable
 
-Action = dict[str, Any]
-"""A structured game action with a ``"type"`` key, for example ``{"type": "tax"}``
-or ``{"type": "steal", "target": "p1"}``. Only the environment decides legality."""
+
+@runtime_checkable
+class Action(Protocol):
+    """A game-owned, JSON-serializable action."""
+
+    def to_dict(self) -> dict[str, Any]: ...
+
+
+def action_to_dict(action: Action | Mapping[str, Any] | None) -> dict[str, Any] | None:
+    if action is None:
+        return None
+    if isinstance(action, Action):
+        return action.to_dict()
+    if isinstance(action, Mapping):
+        return dict(action)
+    return None
 
 
 @dataclass
@@ -17,7 +31,7 @@ class AgentOutput:
     An agent may return an action only, a message only, or both.
     """
 
-    action: Action | None = None
+    action: Action | Mapping[str, Any] | None = None
     message: str | None = None
     raw_model_output: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -25,7 +39,7 @@ class AgentOutput:
     def to_dict(self) -> dict:
         return {
             "message": self.message,
-            "action": self.action,
+            "action": action_to_dict(self.action),
             "raw_model_output": self.raw_model_output,
             "metadata": self.metadata,
         }
@@ -52,4 +66,33 @@ class GameResult:
             "winners": list(self.winners),
             "payoffs": dict(self.payoffs),
             "termination_reason": self.termination_reason,
+        }
+
+
+@dataclass(frozen=True)
+class DecisionEvent:
+    """One submitted decision attempt, accepted or rejected."""
+
+    interaction: dict[str, Any]
+    actor: str
+    observation: dict[str, Any]
+    output: AgentOutput
+    attempt: int
+    accepted: bool
+    error: str | None
+    public_events: tuple[str, ...] = ()
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "kind": "step",
+            "interaction": self.interaction,
+            "actor": self.actor,
+            "player_observation": self.observation,
+            "output": self.output.to_dict(),
+            "auto": bool(self.output.metadata.get("auto")),
+            "fallback": bool(self.output.metadata.get("fallback")),
+            "attempt": self.attempt,
+            "accepted": self.accepted,
+            "error": self.error,
+            "public_events": list(self.public_events),
         }
