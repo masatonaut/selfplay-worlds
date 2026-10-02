@@ -2,6 +2,13 @@
 
 Common environments and infrastructure for multi-agent LLM self-play in strategic social games.
 
+## Start here
+
+- [`docs/project-overview.md`](docs/project-overview.md): simple explanation for the group
+- [`docs/dj-review-simple.md`](docs/dj-review-simple.md): quick review of the whiteboard design
+- [`docs/repo-walkthrough.md`](docs/repo-walkthrough.md): exact code locations and one complete call path
+- [`docs/architecture.md`](docs/architecture.md): detailed implementation notes
+
 > One real game (Coup) works end-to-end, including a full three-player run with a real model through vLLM on CARC. The environment exposes the current interaction structure, and the runner supports single actions, response windows, discussion, and simultaneous actions. Coup is the first implementation because it tests more than a simple alternating-turn loop.
 
 ## Motivation
@@ -58,7 +65,6 @@ Details: [`docs/architecture.md`](docs/architecture.md).
 
 **DESIGNED / FUTURE**
 - Sheriff of Nottingham, Deception, Pit, communication games ([`docs/game-format-matrix.md`](docs/game-format-matrix.md))
-- A second real environment. Deception is a proposed candidate because it would exercise `DISCUSSION`, but it has not been selected or implemented
 - RL integration (for example prime-rl) ([`docs/roadmap.md`](docs/roadmap.md))
 
 ### Real-model validation
@@ -152,6 +158,8 @@ scripts/carc/  environment check and an example Slurm proxy for CARC
 
 | Read this | For |
 |---|---|
+| [`docs/project-overview.md`](docs/project-overview.md) | simple explanation of the whole project |
+| [`docs/dj-review-simple.md`](docs/dj-review-simple.md) | two-minute check of the whiteboard interpretation |
 | [`docs/progress.md`](docs/progress.md) | where the project stands |
 | [`docs/architecture.md`](docs/architecture.md) | why the code looks the way it does |
 | [`docs/design-decisions.md`](docs/design-decisions.md) | decisions, alternatives and tradeoffs |
