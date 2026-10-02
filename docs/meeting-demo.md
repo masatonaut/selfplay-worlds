@@ -149,18 +149,18 @@ uv run python examples/run_coup.py --quiet --agents llm --backend mock    # the 
 | Works now | Test-only | Designed only |
 |---|---|---|
 | Coup, 2 to 6 players, all actions, challenges, blocks, elimination | `DISCUSSION` (fixture) | Sheriff, Deception, Pit, communication games |
-| `SINGLE`, `RESPONSE_WINDOW` | `SIMULTANEOUS` (fixture) | Real-model experiments |
+| `SINGLE`, `RESPONSE_WINDOW` | `SIMULTANEOUS` (fixture) | Additional real-game environments |
 | Scripted and random agents | | Private or team channels |
-| LLM agent with the mock backend | OpenRouter and vLLM clients (tested against a fake local server, never against a real model) | RL integration |
-| JSON logs, trace, deterministic seeds | | GPU and vLLM on CARC |
+| LLM agents through vLLM with a completed Qwen baseline | OpenRouter client (tested against a fake local server) | RL integration |
+| JSON logs, trace, deterministic seeds | | Gemma 4 31B validation |
 | Runs on a CARC CPU compute node (tests and demo verified 2026-09-28) | | |
 
 Careful wording in the meeting:
-- Say "the LLM path is built and tested with a mock", not "LLMs play Coup".
+- Say "Qwen completed one full real-model episode", not "every model is validated".
 - Say "Sheriff would fit like this", not "Sheriff works".
-- Say "tests and the demo run on a CARC CPU node", not "we run models on CARC".
+- Say "Qwen ran through vLLM on CARC", while keeping Gemma explicitly in progress.
 
-## O. Likely questions from Dhananjay
+## O. Likely audience questions
 
 **Did you use GameBoyWorlds or ProjectStarter?**
 > I read them for ideas, like the game registry and how inference is wrapped, but I didn't copy any code. This project needs multi-agent response windows, which a single-agent step loop can't express. If you'd like me to reuse ProjectStarter's inference utilities for consistency, that's a small change.
@@ -187,7 +187,7 @@ Careful wording in the meeting:
 > Yes. The CPU tests and scripted demo pass there, and a full real-model Coup episode completed with Qwen2.5-7B-Instruct through vLLM on one A40. Gemma 4 31B is still pending. CARC blocks VS Code Remote-SSH on login nodes and asks people to run coding agents on compute nodes.
 
 **What would be the next game?**
-> DJ wants the first two environments ready quickly so other researchers can start using the framework. Deception is my current proposal because it would validate real discussion, but I want DJ to choose the second environment.
+> The immediate project priority is to complete the first two environments so other researchers can start using the framework. Deception is a proposed second environment because it would validate real discussion, but the project has not selected it yet.
 
 ## P. 5-minute meeting flow
 

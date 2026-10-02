@@ -20,15 +20,15 @@ _Last updated: 2026-10-02._
 - The proven launcher isolates the shared Python 3.12 vLLM process from the project's Python 3.11 process by exporting `PYTHONPATH` only until vLLM starts, then unsetting it before SelfPlayWorlds runs.
 
 ## IN PROGRESS
-- CARC job `12558939` targets `google/gemma-4-31B-it` on exactly one A100 80 GB. It is pending for priority. No Gemma success is claimed yet.
+- CARC validation targets `google/gemma-4-31B-it` on two same-node A40 GPUs with tensor parallelism. The exact model is cached and the batch is pending. No Gemma success is claimed yet.
 
 ## NEXT
 1. Complete and inspect the pending Gemma 4 validation without adding a duplicate GPU job.
-2. Complete the second real environment so other researchers can begin using the framework. Deception is a sensible proposal because it exercises `DISCUSSION`, but DJ has not selected it yet.
+2. Complete the second real environment so other researchers can begin using the framework. Deception is a sensible proposal because it exercises `DISCUSSION`, but the project has not selected it yet.
 3. Verify the selected second game's rules before implementation.
 
 ## OPEN QUESTIONS
-- Does DJ want Deception as environment 2, or a different game?
+- Should Deception be environment 2, or should another game take priority?
 - What minimum real-model evaluation should every new environment pass before others use it?
 - CARC blocks VS Code Remote-SSH on login nodes. Is the lab's Slurm proxy approach acceptable to CARC, or should we use OnDemand Code Server?
 - Should this repository reuse ProjectStarter's inference utilities for consistency with the lab, or stay independent?

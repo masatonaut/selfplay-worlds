@@ -4,10 +4,10 @@ Common environments and infrastructure for multi-agent LLM self-play in strategi
 
 ## Start here
 
-- [`docs/project-overview.md`](docs/project-overview.md): simple explanation for the group
-- [`docs/dj-review-simple.md`](docs/dj-review-simple.md): quick review of the whiteboard design
-- [`docs/repo-walkthrough.md`](docs/repo-walkthrough.md): exact code locations and one complete call path
-- [`docs/architecture.md`](docs/architecture.md): detailed implementation notes
+- [`docs/design-overview.md`](docs/design-overview.md) — project motivation, design, and current implementation
+- [`docs/repo-walkthrough.md`](docs/repo-walkthrough.md) — exact code path and file locations
+- [`docs/architecture.md`](docs/architecture.md) — detailed runtime design
+- [`docs/progress.md`](docs/progress.md) — current validation status
 
 > One real game (Coup) works end-to-end, including a full three-player run with a real model through vLLM on CARC. The environment exposes the current interaction structure, and the runner supports single actions, response windows, discussion, and simultaneous actions. Coup is the first implementation because it tests more than a simple alternating-turn loop.
 
@@ -71,7 +71,7 @@ Details: [`docs/architecture.md`](docs/architecture.md).
 
 On CARC, commit `9dcc33f7c5fc68ec03a8501221d0b8bbd8d58d83` completed one full three-player Coup episode with `Qwen/Qwen2.5-7B-Instruct` served by vLLM on one A40. Alice (`p0`) won after 5 turns. The run made 15 real model calls, recorded 18 accepted events and 3 forced moves, exercised challenge, block, and challenge-block phases, and produced 0 invalid outputs, retries, or fallbacks. Usage was 10,883 input tokens and 180 output tokens. The checkpoint and artifact validation both passed.
 
-The original target, `google/gemma-4-31B-it`, is prepared for one A100 80 GB. CARC job `12558939` is currently pending for priority. This is not yet a claimed Gemma result.
+The original target, `google/gemma-4-31B-it`, is cached and queued on two same-node A40 GPUs with tensor parallelism. This is not yet a claimed Gemma result.
 
 ## Quick start
 
@@ -158,13 +158,11 @@ scripts/carc/  environment check and an example Slurm proxy for CARC
 
 | Read this | For |
 |---|---|
-| [`docs/project-overview.md`](docs/project-overview.md) | simple explanation of the whole project |
-| [`docs/dj-review-simple.md`](docs/dj-review-simple.md) | two-minute check of the whiteboard interpretation |
+| [`docs/design-overview.md`](docs/design-overview.md) | project motivation, design, and current implementation |
 | [`docs/progress.md`](docs/progress.md) | where the project stands |
 | [`docs/architecture.md`](docs/architecture.md) | why the code looks the way it does |
 | [`docs/design-decisions.md`](docs/design-decisions.md) | decisions, alternatives and tradeoffs |
 | [`docs/meeting-demo.md`](docs/meeting-demo.md) | a 5-minute explanation and demo script |
 | [`docs/references.md`](docs/references.md) | what was reviewed (no code reused) |
 | [`docs/repo-walkthrough.md`](docs/repo-walkthrough.md) | the architecture in simple questions and one exact call path |
-| [`docs/dj-design-review.md`](docs/dj-design-review.md) | DJ's whiteboard concepts mapped directly to the implementation |
 | [`docs/carc-gemma4-runbook.md`](docs/carc-gemma4-runbook.md) | validated launcher pattern and the current Gemma 4 CARC run |

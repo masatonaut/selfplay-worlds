@@ -6,7 +6,7 @@ This document records the validated launcher pattern and the current Gemma exper
 
 The real-model path is proven with `Qwen/Qwen2.5-7B-Instruct`. CARC job `12555139` served Qwen through vLLM on one A40 and completed a full three-player Coup episode. The checkpoint and artifact report passed.
 
-The original target is `google/gemma-4-31B-it`. Job `12558939` requests one A100 80 GB and is pending for priority. A pending job is not a successful Gemma result.
+The original target is `google/gemma-4-31B-it`. Its verified cache contains 62,546,338,248 bytes of model weights. The current validation requests two same-node A40 GPUs with tensor parallelism and is pending for priority. A pending job is not a successful Gemma result.
 
 ## Proven environment isolation
 
@@ -36,15 +36,15 @@ Do not modify the shared vLLM installation.
 ```text
 account:     jonmay_1426
 partition:   gpu
-constraint:  a100-80gb
-GPU:         1 x A100 80 GB
+constraint:  a40
+GPU:         2 x A40 48 GB on one node
 CPU:         8
 host memory: 120 GB
 walltime:    02:00:00
 model:       google/gemma-4-31B-it
 ```
 
-The model is public and was not cached before submission. Its two BF16 safetensor shards total 62,546,338,248 bytes, about 58.25 GiB. The job therefore allows time for download as well as model loading and the episode.
+The model is public. A CPU job downloaded and verified its two BF16 safetensor shards in scratch before GPU submission. They total 62,546,338,248 bytes, about 58.25 GiB, with no missing or incomplete files.
 
 ## vLLM configuration
 
@@ -52,16 +52,17 @@ The model is public and was not cached before submission. Its two BF16 safetenso
 vllm serve google/gemma-4-31B-it \
   --host 127.0.0.1 \
   --port 8000 \
+  --download-dir <SCRATCH_HUGGING_FACE_CACHE> \
   --dtype bfloat16 \
-  --tensor-parallel-size 1 \
+  --tensor-parallel-size 2 \
   --language-model-only \
   --max-model-len 4096 \
-  --max-num-seqs 4 \
-  --gpu-memory-utilization 0.95 \
+  --max-num-seqs 1 \
+  --gpu-memory-utilization 0.90 \
   --enforce-eager
 ```
 
-This is a text-only, sequential workload. The 4096-token context limit is enough for current Coup prompts. Limiting concurrency and using eager execution leave more memory for weights and KV cache. The batch verifies that exactly one A100 with at least 80,000 MiB is visible before loading the model.
+This is a text-only, sequential workload. The 4096-token context limit is enough for current Coup prompts. Limiting concurrency and using eager execution leave more memory for weights and KV cache. Tensor parallelism places approximately 29.1 GiB of BF16 weights on each GPU. The batch verifies that exactly two A40 GPUs are visible and that NCCL is available before loading the model.
 
 Gemma sampling follows the model generation configuration:
 
@@ -78,7 +79,7 @@ Thinking is not requested. Private reasoning is not stored.
 The batch fails at the first unsuccessful stage and preserves its logs:
 
 1. Print Slurm, node, module, CUDA, and GPU information.
-2. Verify one A100 80 GB.
+2. Verify two same-node A40 GPUs and NCCL support.
 3. Verify the exact repository commit and a clean tracked checkout.
 4. Export the shared Python 3.12 paths and verify vLLM.
 5. Verify model access.
@@ -105,4 +106,4 @@ An `EngineDeadError` logged after the intentional cleanup `SIGTERM` is not an ex
 - The checkpoint contains three separate agent states.
 - The validation report has `valid: true`.
 
-If one A100 is insufficient, preserve the exact failure stage, vLLM log, and `nvidia-smi` memory state. Do not submit a two-GPU job without a separate decision and approval.
+If the two-GPU run fails, preserve the exact failure stage, vLLM log, and memory record for both GPUs. Do not submit another GPU job without a separate diagnosis and approval.
