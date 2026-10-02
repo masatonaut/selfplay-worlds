@@ -22,8 +22,8 @@ Lightweight ADR log. Each entry: **Decision / Why / Alternative / Tradeoff / Sta
 
 ## ADR-03 Runner separated from Environment
 
-- **Decision:** The environment says **who may act**. The Runner decides **who is asked first**, how many retries an invalid answer gets, and when forced moves are applied automatically.
-- **Why:** In a response window, "who speaks first" changes the outcome (the first challenger wins). That is an experimental choice, not a game rule. Keeping it in the Runner makes turn-taking a variable we can change without touching game code.
+- **Decision:** The environment says **who may act**. The Scheduler decides **who is asked first**. The Runner follows that order, manages invalid-answer retries, and applies forced moves automatically when configured.
+- **Why:** In a response window, "who speaks first" changes the outcome (the first challenger wins). That is an experimental choice, not a game rule. Keeping it in the Scheduler makes turn-taking a variable we can change without touching game code.
 - **Alternative:** The environment picks exactly one `current_player` every time.
 - **Tradeoff:** The Runner and environment must agree on one small contract (`current_interaction`, `legal_actions`, `step`).
 - **Status:** Accepted.
@@ -82,7 +82,7 @@ Lightweight ADR log. Each entry: **Decision / Why / Alternative / Tradeoff / Sta
 - **Why:** OpenRouter and vLLM both expose the same chat-completions API, so one small client covers both. Credentials come only from environment variables.
 - **Alternative:** Reuse ProjectStarter's inference module, or a larger framework.
 - **Tradeoff:** No batching, rate limiting or async yet. Those can be added inside the backend without changing agents.
-- **Status:** Accepted.
+- **Status:** Accepted. `VLLMBackend` completed a full real-model Coup episode with Qwen2.5-7B-Instruct on CARC. OpenRouter has not yet been exercised with a real call.
 
 ## ADR-11 No RL integration yet
 
@@ -122,7 +122,7 @@ Lightweight ADR log. Each entry: **Decision / Why / Alternative / Tradeoff / Sta
 - **Why:** Choosing a number is the easiest format for a model to get right, and every failure is visible in the log as a rejected output with the raw text.
 - **Alternative:** Free-text actions parsed with fuzzy matching.
 - **Tradeoff:** The model cannot invent actions outside the list, which is the point.
-- **Status:** Accepted. Tested with `MockBackend`; not yet run against a real model.
+- **Status:** Accepted. The numbered-action path completed a full real-model Coup episode with Qwen2.5-7B-Instruct through vLLM on CARC with no invalid outputs or fallbacks.
 
 ## ADR-16 Typed game-specific state and actions
 
@@ -146,4 +146,4 @@ Lightweight ADR log. Each entry: **Decision / Why / Alternative / Tradeoff / Sta
 - **Why:** Agent experience is not the same thing as true game state, and each player must resume independently even when all players share one inference server.
 - **Alternative:** Treat agents as stateless or serialize the live inference client.
 - **Tradeoff:** Checkpoints contain repeated observation history. They never contain private reasoning or live clients.
-- **Status:** Accepted.
+- **Status:** Accepted. The three agents in the real Qwen CARC run had separate serialized `AgentState` values in the final checkpoint.

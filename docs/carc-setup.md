@@ -6,7 +6,7 @@ Every statement carries one of four labels:
 
 | Label | Meaning |
 |---|---|
-| **[VERIFIED ON CARC]** | We ran it on CARC on 2026-09-28 (login node `discovery2`, CPU compute node `e23-02`). |
+| **[VERIFIED ON CARC]** | We ran it on CARC. CPU setup was checked on 2026-09-28, and the real-model vLLM path was checked on 2026-10-01. |
 | **[VERIFIED]** | We ran it, but only on a Mac. |
 | **[CARC DOCS]** | Written in CARC's public user guides (read on 2026-09-24 and 2026-09-28). Not tried by us. |
 | **[NOT YET VERIFIED]** | Nobody has checked it yet. Unknown values are placeholders such as `<model_id>`; nothing was guessed. |
@@ -34,13 +34,17 @@ Mac ──(USC VPN)──> discovery.usc.edu      login node: ssh, git, salloc o
 | GitHub | An SSH key created on CARC authenticates to GitHub (`ssh -T git@github.com` greets the account owner). The clone matched `main` on GitHub. |
 | `uv sync` | Succeeded; the virtual environment uses Python 3.11.9. |
 | `uv run pytest` | 122 passed, 1 skipped (the skipped test needs the optional `llm` extra). |
-| `uv run --extra llm pytest` | 123 passed (the OpenAI client is tested against a local fake server; no real model is called). |
+| `uv run --extra llm pytest` | 123 passed in the original setup check. This test uses a local fake server; the separate real-model run is described below. |
 | `uv run python examples/run_coup.py` | "Carol wins after 14 turns (seed 0)". The 103-line trace is identical to the one on the Mac, and the episode JSON is valid. |
 | `bash scripts/carc/check_environment.sh --tests` | Runs to the end on the compute node; every section prints. |
 | Claude Code | CARC's harness is present at `/etc/claude-code` on login and compute nodes, but the `claude` command is **not installed** (not on `PATH`, no module). |
 | Cost | The verification job ran 2 min 36 s on 4 CPUs and was cancelled right after. |
 
-Still **[NOT YET VERIFIED]** on CARC: installing and logging in to Claude Code, a real OpenRouter call, any GPU or vLLM run, and the VS Code options.
+## Real-model validation (2026-10-01)
+
+**[VERIFIED ON CARC]** Qwen2.5-7B-Instruct was served through the shared vLLM environment on one A40. One full three-player Coup episode completed with 15 real model calls. The checkpoint and artifact validation passed. The launcher must start vLLM with its shared Python 3.12 paths and then unset `PYTHONPATH` before running SelfPlayWorlds with project Python 3.11. See `docs/carc-gemma4-runbook.md`.
+
+Still **[NOT YET VERIFIED]** on CARC: installing and logging in to Claude Code, a real OpenRouter call, Gemma 4 31B completion, and the VS Code options.
 
 Two findings from CARC's documentation shape the rest of this guide:
 

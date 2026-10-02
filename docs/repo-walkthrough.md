@@ -146,3 +146,11 @@ Deception would add `games/deception/` with a `DeceptionState`, `DeceptionAction
 10. A different inference backend can implement `InferenceBackend.generate` without editing game rules.
 
 The main remaining architectural compromise is that `CoupEnv` keeps private forwarding properties such as `_turn` and `_phase` so the existing rule handlers remain readable while `CoupState` is the single storage object. They are aliases, not duplicate state. A future rewrite could use `self.state.phase` everywhere, but that would add churn without changing the model.
+
+## What is validated today
+
+- **Real game and real model:** Coup, `SINGLE`, and `RESPONSE_WINDOW` with Qwen2.5-7B-Instruct through vLLM on CARC.
+- **Generic and test-supported only:** `DISCUSSION` and `SIMULTANEOUS` in `tests/fixtures/talk_then_vote.py`.
+- **Not claimed:** a real Deception or Sheriff environment, RL or self-training, or private and team communication channels.
+
+The next practical priority is a second real environment so other researchers can start using the framework. Deception is a proposed candidate because it would exercise `DISCUSSION`; it is not selected or implemented yet.

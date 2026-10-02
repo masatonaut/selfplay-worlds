@@ -6,7 +6,7 @@ Games differ not only in their rules but in **who is allowed to act, and when**.
 
 ## The main idea
 
-> I implemented one real game end-to-end, but the framework is not specific to that game. The environment exposes the current interaction structure, and the runner handles different patterns such as single actions, response windows, discussion, and eventually simultaneous actions. Coup is the first implementation because it tests more than a simple alternating-turn loop.
+> I implemented one real game end-to-end, including a real-model run through vLLM, but the framework is not specific to that game. The environment exposes the current interaction structure, and the runner supports single actions, response windows, discussion, and simultaneous actions. Coup is the first implementation because it tests more than a simple alternating-turn loop.
 
 ## Design requirements
 
@@ -56,6 +56,16 @@ flowchart TD
 ```
 
 Dotted arrows exist only for LLM agents. Scripted and random agents never touch the inference layer, which is why every test runs without a model, a network or a GPU.
+
+## Current validation levels
+
+| Level | What is validated |
+|---|---|
+| Real game and real model | Coup with `SINGLE` and `RESPONSE_WINDOW`, using Qwen2.5-7B-Instruct through vLLM on CARC |
+| Generic and test-supported | `DISCUSSION` and `SIMULTANEOUS` through `tests/fixtures/talk_then_vote.py` |
+| Not claimed | A real Deception or Sheriff environment, RL or self-training, and private or team communication channels |
+
+The Qwen CARC run completed a full three-player episode with three separate agent states, 15 model calls, no invalid outputs, and a valid checkpoint and artifact report. Gemma 4 31B validation is pending and is not counted as a completed result.
 
 ## Environment vs Runner
 
@@ -201,6 +211,8 @@ Example: `examples/output/coup-seed0-3p.json`.
 
 `LLMAgent` builds the prompt from the game's `rules_text` and `render_observation`, asks for `{"message": ..., "action": <number>}`, and maps the number to the exact legal object without guessing. It does not accept model-invented action dictionaries. Token counts, latency and parse errors go into the record. JSON schema output is optional. Gemma 4 uses `temperature=1.0`, `top_p=0.95`, and `top_k=64`; thinking is disabled for the baseline.
 
+The real CARC baseline used the same `VLLMBackend` path with Qwen2.5-7B-Instruct. It completed one full three-player Coup episode. The shared vLLM Python 3.12 environment is isolated from the project Python 3.11 environment at the launcher boundary; neither environment is serialized into game state or checkpoints.
+
 ## Extension points: adding a game
 
 1. Create `games/<name>/` with an environment class that implements `GameEnv`.
@@ -218,7 +230,7 @@ No Runner, agent, logger or inference change is needed for a game that uses the 
 - In Coup, talk is attached to decisions; players cannot speak out of turn.
 - The Runner is sequential and synchronous. There is no batching or parallel inference.
 - Scripted agents test the machinery, not strategy.
-- On CARC only the CPU path is verified (tests and demo, 2026-09-28); GPU and vLLM are not (`docs/carc-setup.md`).
+- CARC GPU and vLLM execution are verified with Qwen2.5-7B-Instruct. Gemma 4 31B is still pending, and OpenRouter has not been exercised with a real call.
 
 ## Example trace
 

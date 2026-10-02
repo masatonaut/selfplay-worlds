@@ -166,7 +166,7 @@ Careful wording in the meeting:
 > I read them for ideas, like the game registry and how inference is wrapped, but I didn't copy any code. This project needs multi-agent response windows, which a single-agent step loop can't express. If you'd like me to reuse ProjectStarter's inference utilities for consistency, that's a small change.
 
 **Have you run a real LLM yet?**
-> Not yet. The LLM path is built and tested with a mock model, including the prompt, the parsing and the retries. Running real models through OpenRouter is the next step. I'd like to agree on which models first.
+> Yes. Qwen2.5-7B-Instruct completed a full three-player Coup episode through vLLM on CARC. All 15 non-forced decisions were real model calls, and the checkpoint and artifact report passed. Gemma 4 31B is queued separately and is not yet a completed result.
 
 **What happens when a model outputs something invalid?**
 > The environment rejects it with a reason. The runner sends the reason back to the agent and retries, twice by default, then falls back to the safest legal action, such as pass. Every attempt is logged, so the invalid-output rate is a metric.
@@ -175,7 +175,7 @@ Careful wording in the meeting:
 > With scripted agents, a 3-player game has about 46 decisions at the median and a 6-player game about 150. Real models will differ. Response windows are the main cost, because every claim asks each other player. Forced moves don't call the model.
 
 **Who answers first in a response window? Isn't that unfair?**
-> It's a runner setting. The default is clockwise from the actor. We can randomise it, and we should measure whether it matters.
+> The environment decides who may respond, and the scheduler chooses who is asked first. The default is deterministic round robin. We can replace that policy and measure whether it changes behavior.
 
 **Can an agent see hidden information by accident?**
 > Prompts are built only from the player's observation. A test checks that two games that differ only in other players' cards produce exactly the same prompt.
@@ -184,10 +184,10 @@ Careful wording in the meeting:
 > They can say something with every decision, including a pass. There is no free chat outside decisions yet. For games where talk is central, the discussion mode handles it.
 
 **Does it run on CARC?**
-> Yes, on a CPU compute node. I cloned the repo on CARC, and on a debug node the tests pass and the Coup demo gives exactly the same game as on my laptop. GPU and vLLM are not tested yet. One finding: CARC blocks VS Code Remote-SSH on login nodes and asks people to run coding agents on compute nodes, so I develop on a compute node.
+> Yes. The CPU tests and scripted demo pass there, and a full real-model Coup episode completed with Qwen2.5-7B-Instruct through vLLM on one A40. Gemma 4 31B is still pending. CARC blocks VS Code Remote-SSH on login nodes and asks people to run coding agents on compute nodes.
 
 **What would be the next game?**
-> Sheriff or Deception, because each uses a different interaction pattern from Coup. Which one fits the research question better?
+> DJ wants the first two environments ready quickly so other researchers can start using the framework. Deception is my current proposal because it would validate real discussion, but I want DJ to choose the second environment.
 
 ## P. 5-minute meeting flow
 

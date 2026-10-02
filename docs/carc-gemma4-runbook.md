@@ -1,125 +1,108 @@
 # CARC Gemma 4 vLLM runbook
 
-This is a prepared procedure, not a record of a completed GPU run. Do not execute the allocation command until the repository owner explicitly approves it.
+This document records the validated launcher pattern and the current Gemma experiment. It does not contain credentials, tokens, or shared-environment paths.
 
-## What was inspected
+## Current status
 
-The repository CARC guide and environment script were inspected. ProjectStarter's current `vLLMModel` uses an OpenAI compatible base URL and disables hosted API rate limiting. Its usage handling preserves token metadata. No code was copied. Neither reference repository contains `install_vllm_cuda_12.sh`, and that script is not present in this local workspace. On CARC, locate it and existing environments before installing anything:
+The real-model path is proven with `Qwen/Qwen2.5-7B-Instruct`. CARC job `12555139` served Qwen through vLLM on one A40 and completed a full three-player Coup episode. The checkpoint and artifact report passed.
+
+The original target is `google/gemma-4-31B-it`. Job `12558939` requests one A100 80 GB and is pending for priority. A pending job is not a successful Gemma result.
+
+## Proven environment isolation
+
+The shared vLLM installation uses Python 3.12. SelfPlayWorlds uses its own Python 3.11 environment. Letting the shared `PYTHONPATH` leak into the client process causes binary-extension import failures.
+
+The working order is:
 
 ```bash
-find "$HOME" /project2/jonmay_1426 -maxdepth 4 -type f -name 'install_vllm_cuda_12.sh' -print 2>/dev/null
-find "$HOME" /project2/jonmay_1426 -maxdepth 4 -type f -path '*/bin/vllm' -print 2>/dev/null
-find "$HOME" /project2/jonmay_1426 -maxdepth 4 -type d -iname '*vllm*' -print 2>/dev/null
+export PYTHONPATH="<SHARED_VLLM_SOURCE>:<SHARED_VLLM_SITE_PACKAGES>"
+
+# Start vLLM here. The server and its child processes inherit Python 3.12 paths.
+start_vllm_in_background
+
+# The running server keeps its inherited environment.
+unset PYTHONPATH
+
+# All commands below use the project Python 3.11 environment.
+project_python examples/run_coup.py ...
 ```
 
-Prefer a lab environment whose owner confirms it already serves Gemma 4. Do not modify a shared environment.
+Before a GPU submission, a fresh child Python process must import `vllm` and inspect `Gemma4ForConditionalGeneration`. After `unset PYTHONPATH`, another fresh process must import `openai`, `pydantic`, `pydantic_core`, and `selfplay_worlds`, with `pydantic_core` loaded from the project Python 3.11 environment.
 
-## 1. Read only resource check
+Do not modify the shared vLLM installation.
 
-Run on a CARC login node. These commands do not submit a job:
+## Current Gemma request
 
-```bash
-myaccount
-noderes -c -g
-sinfo -p gpu
-squeue --me
+```text
+account:     jonmay_1426
+partition:   gpu
+constraint:  a100-80gb
+GPU:         1 x A100 80 GB
+CPU:         8
+host memory: 120 GB
+walltime:    02:00:00
+model:       google/gemma-4-31B-it
 ```
 
-## 2. Proposed allocation, approval required
+The model is public and was not cached before submission. Its two BF16 safetensor shards total 62,546,338,248 bytes, about 58.25 GiB. The job therefore allows time for download as well as model loading and the episode.
 
-The first attempt uses one 80 GB A100 because the published weights are about 62.5 GB and the experiment has only one short request at a time. Context is capped at 8192 tokens to leave memory for activations and KV cache.
-
-```bash
-salloc --account=jonmay_1426 --partition=gpu --constraint=a100-80gb --ntasks=1 --gpus-per-task=a100:1 --cpus-per-task=8 --mem=128G --time=02:00:00
-```
-
-Requested resources: one A100 80 GB GPU, 8 CPUs, 128 GB host memory, and 2 hours. Purpose: verify the existing vLLM environment, serve `google/gemma-4-31B-it`, make one smoke request, and run one three player Coup episode. If this cannot fit, stop and request new approval before asking for two GPUs.
-
-## 3. Verify the allocated node and environment
+## vLLM configuration
 
 ```bash
-hostname
-echo "$SLURM_JOB_ID"
-nvidia-smi
-nvcc --version 2>/dev/null || true
-module list 2>&1
-```
-
-Activate the lab's confirmed environment. The path below is deliberately a placeholder until the read only search identifies it:
-
-```bash
-source <KNOWN_GOOD_VLLM_ENV>/bin/activate
-python -c 'import vllm, torch; print("vllm", vllm.__version__); print("torch", torch.__version__); print("cuda", torch.version.cuda)'
-hf auth whoami
-```
-
-CARC's current Gemma 4 guide gives a vLLM 0.28 CUDA 12.9 wheel as a fallback. Installation is a separate change and should only be used if the lab has no known good environment.
-
-## 4. Start the server
-
-Run inside `tmux` on the allocated GPU node:
-
-```bash
-mkdir -p runs/carc-gemma4
-export HF_HOME="/scratch1/$USER/huggingface"
-export VLLM_USE_FLASHINFER_SAMPLER=0
 vllm serve google/gemma-4-31B-it \
   --host 127.0.0.1 \
   --port 8000 \
   --dtype bfloat16 \
   --tensor-parallel-size 1 \
-  --max-model-len 8192 \
+  --language-model-only \
+  --max-model-len 4096 \
+  --max-num-seqs 4 \
   --gpu-memory-utilization 0.95 \
-  > runs/carc-gemma4/vllm-server.log 2>&1 &
-export VLLM_SERVER_PID=$!
+  --enforce-eager
 ```
 
-Use the scratch cache only after confirming this location with the lab. The server listens on loopback and does not need an API key for this single node experiment.
+This is a text-only, sequential workload. The 4096-token context limit is enough for current Coup prompts. Limiting concurrency and using eager execution leave more memory for weights and KV cache. The batch verifies that exactly one A100 with at least 80,000 MiB is visible before loading the model.
 
-## 5. Health check and one smoke request
+Gemma sampling follows the model generation configuration:
 
-```bash
-until curl --fail --silent http://127.0.0.1:8000/health >/dev/null; do sleep 10; done
-curl --fail --silent http://127.0.0.1:8000/v1/models
-curl --fail --silent http://127.0.0.1:8000/v1/chat/completions \
-  -H 'Content-Type: application/json' \
-  -d '{"model":"google/gemma-4-31B-it","messages":[{"role":"user","content":"Reply with exactly: ready"}],"max_tokens":16,"temperature":1.0,"top_p":0.95,"top_k":64}'
+```text
+temperature = 1.0
+top_p = 0.95
+top_k = 64
 ```
 
-## 6. Run one full Coup episode
+Thinking is not requested. Private reasoning is not stored.
 
-```bash
-export VLLM_BASE_URL=http://127.0.0.1:8000/v1
-uv sync --extra llm
-uv run --extra llm python examples/run_coup.py \
-  --players 3 \
-  --seed 0 \
-  --agents llm \
-  --backend vllm \
-  --model google/gemma-4-31B-it \
-  --temperature 1.0 \
-  --top-p 0.95 \
-  --top-k 64 \
-  --structured-output \
-  --output runs/carc-gemma4/coup-gemma4-seed0.json \
-  --checkpoint runs/carc-gemma4/coup-gemma4-seed0.checkpoint.json
-```
+## Self-running validation stages
 
-Thinking is disabled because the system prompt does not include the Gemma 4 thinking trigger. Private reasoning is not requested or stored.
+The batch fails at the first unsuccessful stage and preserves its logs:
 
-## 7. Validate artifacts
+1. Print Slurm, node, module, CUDA, and GPU information.
+2. Verify one A100 80 GB.
+3. Verify the exact repository commit and a clean tracked checkout.
+4. Export the shared Python 3.12 paths and verify vLLM.
+5. Verify model access.
+6. Start vLLM in the background.
+7. Wait for `/health` with a bounded timeout.
+8. Verify `/v1/models` serves the requested model.
+9. Unset `PYTHONPATH`.
+10. Run one trivial chat completion.
+11. Run one real Coup decision through `VLLMBackend`.
+12. Run one complete three-player Coup episode with separate agent states.
+13. Validate the episode, checkpoint, usage, and model-call counts.
+14. Stop vLLM through the cleanup trap.
 
-```bash
-uv run python -c 'import json; from pathlib import Path; p=Path("runs/carc-gemma4/coup-gemma4-seed0.json"); d=json.loads(p.read_text()); assert d["result"]; assert d["events"]; assert d["result"]["usage"]["model_calls"] > 0; print(d["result"])'
-uv run python -c 'import json; from pathlib import Path; p=Path("runs/carc-gemma4/coup-gemma4-seed0.checkpoint.json"); d=json.loads(p.read_text()); assert d["schema_version"] == "1.0"; assert "game_state" in d and "agent_states" in d; print(p)'
-```
+An `EngineDeadError` logged after the intentional cleanup `SIGTERM` is not an experiment failure when the batch and artifact validation have already succeeded.
 
-## 8. Release the GPU
+## Success criteria
 
-```bash
-kill "$VLLM_SERVER_PID"
-wait "$VLLM_SERVER_PID" 2>/dev/null || true
-exit
-```
+- The model loads and both health and model endpoints respond.
+- The smoke completion returns usage metadata.
+- The single Coup decision produces an accepted typed action.
+- Every non-forced episode decision goes through Gemma.
+- The episode reaches a winner or the explicit turn limit.
+- The result records calls, tokens, latency, retries, fallbacks, and phase coverage.
+- The checkpoint contains three separate agent states.
+- The validation report has `valid: true`.
 
-Leaving the allocation shell releases the interactive job. From another CARC shell, use `scancel <job_id>` only if the allocation did not end normally.
+If one A100 is insufficient, preserve the exact failure stage, vLLM log, and `nvidia-smi` memory state. Do not submit a two-GPU job without a separate decision and approval.

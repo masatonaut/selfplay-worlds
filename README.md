@@ -2,7 +2,7 @@
 
 Common environments and infrastructure for multi-agent LLM self-play in strategic social games.
 
-> One real game (Coup) works end-to-end, but the framework is not specific to that game. The environment exposes the current interaction structure, and the runner handles different patterns such as single actions, response windows, discussion, and eventually simultaneous actions. Coup is the first implementation because it tests more than a simple alternating-turn loop.
+> One real game (Coup) works end-to-end, including a full three-player run with a real model through vLLM on CARC. The environment exposes the current interaction structure, and the runner supports single actions, response windows, discussion, and simultaneous actions. Coup is the first implementation because it tests more than a simple alternating-turn loop.
 
 ## Motivation
 
@@ -47,7 +47,7 @@ Details: [`docs/architecture.md`](docs/architecture.md).
 **WORKING NOW**
 - Coup end-to-end, 2 to 6 players, rules checked against two rulebook transcriptions ([`docs/coup-rules.md`](docs/coup-rules.md))
 - `SINGLE` and `RESPONSE_WINDOW` interactions
-- Scripted, random and LLM agents (LLM path run with the mock backend only)
+- Scripted, random and LLM agents, including a real Qwen2.5-7B-Instruct run through vLLM on CARC
 - One JSON episode log per game, readable terminal trace, deterministic seeds
 - 135 tests, no model, API key or GPU needed (one is skipped without the optional `llm` extra)
 - Typed Coup state, phases, and actions; per-agent state; usage budgets; atomic checkpoint and deterministic resume
@@ -58,8 +58,14 @@ Details: [`docs/architecture.md`](docs/architecture.md).
 
 **DESIGNED / FUTURE**
 - Sheriff of Nottingham, Deception, Pit, communication games ([`docs/game-format-matrix.md`](docs/game-format-matrix.md))
-- Real-model evaluation through OpenRouter and vLLM on CARC ([`docs/carc-setup.md`](docs/carc-setup.md))
+- A second real environment. Deception is a proposed candidate because it would exercise `DISCUSSION`, but it has not been selected or implemented
 - RL integration (for example prime-rl) ([`docs/roadmap.md`](docs/roadmap.md))
+
+### Real-model validation
+
+On CARC, commit `9dcc33f7c5fc68ec03a8501221d0b8bbd8d58d83` completed one full three-player Coup episode with `Qwen/Qwen2.5-7B-Instruct` served by vLLM on one A40. Alice (`p0`) won after 5 turns. The run made 15 real model calls, recorded 18 accepted events and 3 forced moves, exercised challenge, block, and challenge-block phases, and produced 0 invalid outputs, retries, or fallbacks. Usage was 10,883 input tokens and 180 output tokens. The checkpoint and artifact validation both passed.
+
+The original target, `google/gemma-4-31B-it`, is prepared for one A100 80 GB. CARC job `12558939` is currently pending for priority. This is not yet a claimed Gemma result.
 
 ## Quick start
 
@@ -152,4 +158,5 @@ scripts/carc/  environment check and an example Slurm proxy for CARC
 | [`docs/meeting-demo.md`](docs/meeting-demo.md) | a 5-minute explanation and demo script |
 | [`docs/references.md`](docs/references.md) | what was reviewed (no code reused) |
 | [`docs/repo-walkthrough.md`](docs/repo-walkthrough.md) | the architecture in simple questions and one exact call path |
-| [`docs/carc-gemma4-runbook.md`](docs/carc-gemma4-runbook.md) | prepared Gemma 4 vLLM commands; GPU run still needs approval |
+| [`docs/dj-design-review.md`](docs/dj-design-review.md) | DJ's whiteboard concepts mapped directly to the implementation |
+| [`docs/carc-gemma4-runbook.md`](docs/carc-gemma4-runbook.md) | validated launcher pattern and the current Gemma 4 CARC run |
