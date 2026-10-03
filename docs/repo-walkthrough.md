@@ -1,5 +1,7 @@
 # Repository walkthrough
 
+> **Out of date (2026-10-03).** This page describes the architecture before the GameEnv / Policy / ConversationGame redesign (`Runner`, `Agent`, `GameSpec`, `EpisodeRecorder`, `CheckpointStore` no longer exist). The current design is in [`architecture.md`](architecture.md); what changed and why is in ADR-19 to ADR-22 of [`design-decisions.md`](design-decisions.md).
+
 ## The 11 questions
 
 | Concept | Question | Code answer |

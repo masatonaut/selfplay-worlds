@@ -1,5 +1,7 @@
 # Meeting demo
 
+> **Out of date (2026-10-03).** This page describes the architecture before the GameEnv / Policy / ConversationGame redesign (`Runner`, `Agent`, `GameSpec`, `EpisodeRecorder`, `CheckpointStore` no longer exist). The current design is in [`architecture.md`](architecture.md); what changed and why is in ADR-19 to ADR-22 of [`design-decisions.md`](design-decisions.md).
+
 A script for explaining the project in 5 minutes. Simple English first, then Japanese.
 
 ## A. 30-second explanation
@@ -109,7 +111,7 @@ Say: "Alice says she has the Contessa, and her action claims it, but her own obs
 
 ```bash
 uv run python examples/run_coup.py --quiet --full-state    # adds the hidden god view after every event
-uv run python examples/run_coup.py --quiet --agents llm --backend mock    # the whole LLM path, offline
+uv run python examples/run_coup.py --quiet --policies llm --backend mock    # the whole LLM path, offline
 ```
 
 ## F. Why Coup first?

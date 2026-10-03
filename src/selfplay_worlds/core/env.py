@@ -1,108 +1,194 @@
 """The contract every game implements.
 
-A ``GameEnv`` is the single source of truth: state, rules, legality, transitions
-and the final result. It never calls a model and never decides who is asked first.
+A ``GameEnv`` is the single source of truth: settings, state, rules, legality,
+transitions, done and rewards. It never sees talk, prompts, models or policies,
+and it never decides who is asked first.
 """
 
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Callable
-from dataclasses import dataclass
-from typing import Any
+from dataclasses import dataclass, field
+from enum import StrEnum
+from pathlib import Path
+from typing import Any, ClassVar
 
-from selfplay_worlds.core.interaction import Interaction
-from selfplay_worlds.core.types import Action, AgentOutput, GameResult, StepResult
+from selfplay_worlds.core.persist import load_pickle, save_pickle
+
+
+class Action(ABC):
+    """One game-specific action.
+
+    Policies never build these. They return a plain answer dict, for example
+    ``{"option": 3}``, and ConversationGame turns it into the game's Action with
+    ``from_answer`` before calling ``GameEnv.step``.
+    """
+
+    @classmethod
+    @abstractmethod
+    def from_answer(cls, *, answer: dict, player_id: str, observation: dict) -> Action:
+        """Turn a policy's answer into this game's Action.
+
+        Raise ``ValueError(reason)`` if the answer cannot be read (for example
+        option 9 of 4). Reading an answer is not checking legality: ``step`` does that.
+        """
+
+    @abstractmethod
+    def to_dict(self) -> dict[str, Any]:
+        """JSON-serializable form, used in the conversation record."""
+
+
+class DialogueMode(StrEnum):
+    """How ConversationGame schedules a phase. The same four modes for every game."""
+
+    ACTION = "action"
+    """One player acts, optionally talking first."""
+
+    RESPONSE_WINDOW = "response_window"
+    """Eligible players respond in order. The environment may close it early."""
+
+    DISCUSSION = "discussion"
+    """Talk rounds for everyone, then each eligible player acts."""
+
+    SIMULTANEOUS = "simultaneous"
+    """Every eligible player answers before anyone's action is applied."""
+
+
+@dataclass(frozen=True)
+class DialoguePhase:
+    """What is happening right now in the game."""
+
+    phase_id: int
+    """Increases every time the environment opens a new phase. ConversationGame
+    uses it to notice that the environment closed a window early."""
+
+    phase: str
+    """Game-specific rule state, for example ``"challenge_action"``."""
+
+    mode: DialogueMode
+    eligible: tuple[str, ...]
+    """Who may act now, in the environment's default order."""
+
+    talk_rounds: int = 0
+    """How many times each speaker may talk before acting. 0 means straight to the action."""
+
+    description: str = ""
+    """One human-readable line, used in prompts and traces."""
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "phase_id": self.phase_id,
+            "phase": self.phase,
+            "mode": self.mode.value,
+            "eligible": list(self.eligible),
+            "talk_rounds": self.talk_rounds,
+            "description": self.description,
+        }
+
+
+@dataclass
+class StepResult:
+    """The environment's answer to one ``step`` call."""
+
+    accepted: bool
+    error: str | None = None
+    """Why the action was rejected. A rejected action changes nothing."""
+
+    public_events: list[str] = field(default_factory=list)
+    """Human-readable descriptions of everything that became public in this step."""
 
 
 class GameEnv(ABC):
-    name: str = "base"
+    action_class: ClassVar[type[Action]]
+    """The game's Action subclass. ConversationGame calls its ``from_answer``."""
 
-    # --- lifecycle -------------------------------------------------------------
+    def __init__(self, *, name: str, game_config: dict[str, Any]) -> None:
+        self.name = name
+        self.game_config = dict(game_config)
+        """Every game setting, the seed included. Subclasses read settings only from here."""
+        self.reset()
 
-    @abstractmethod
-    def reset(self, *, seed: int | None = None) -> None:
-        """Start a new game. The same seed must produce the same game."""
+    def reset(self) -> None:
+        """Start the game from ``game_config``. The same config must produce the same game.
+
+        Subclasses call ``super().reset()`` and then build their state ONLY from
+        ``self.game_config``: their own attributes do not exist yet when the base
+        ``__init__`` first calls this.
+        """
+        self.n_steps = 0
+
+    # --- what is happening now -------------------------------------------------
 
     @property
     @abstractmethod
     def player_ids(self) -> list[str]:
         """All players in seat order, including eliminated ones."""
 
-    # --- what is happening now -------------------------------------------------
+    @abstractmethod
+    def get_dialogue_phase(self) -> DialoguePhase | None:
+        """The open phase, or ``None`` once the game is over."""
 
     @abstractmethod
-    def current_interaction(self) -> Interaction | None:
-        """The open decision point, or ``None`` once the game is over."""
+    def get_observation(self, *, player_id: str) -> dict[str, Any]:
+        """Everything this player may know, and nothing more. It includes:
 
-    @abstractmethod
-    def legal_actions(self, *, player_id: str) -> list[Action]:
-        """Legal actions for this player in the current interaction.
-
-        By convention the first element is the most conservative choice
-        (for example "pass"). The Runner uses it as a fallback.
+        * ``"history"``: the game's public history.
+        * ``"options"``: the menu this player can pick from by number right now
+          (a menu for prompts and policies, not a legality guarantee).
         """
 
-    # --- information -----------------------------------------------------------
-
     @abstractmethod
-    def observe(self, *, player_id: str) -> dict:
-        """Everything this player is allowed to know, and nothing more.
+    def get_state(self, **kwargs: Any) -> dict[str, Any]:
+        """Game state as a dict. ``kwargs`` select the view (for example ``view="full"``).
 
-        If the observation contains a ``"history"`` list, it must be public
-        events only; the episode log stores it compactly.
+        The returned dict MUST include:
+            "done":    bool
+            "rewards": dict[player_id, float]   (zeros until the game ends)
         """
-
-    def public_state(self) -> dict:
-        """What every player and spectator can see."""
-        return {}
-
-    def public_history(self) -> list[str]:
-        """All public events so far, in order."""
-        return []
-
-    @abstractmethod
-    def full_state(self) -> dict:
-        """God view, including hidden information. For logs and tests only."""
-
-    # --- transitions -----------------------------------------------------------
-
-    @abstractmethod
-    def step(self, *, player_id: str, output: AgentOutput) -> StepResult:
-        """Apply one player's output. Invalid outputs are rejected, never guessed."""
-
-    @abstractmethod
-    def result(self) -> GameResult | None:
-        """The final result, or ``None`` while the game is still running."""
-
-    # --- conveniences ----------------------------------------------------------
-
-    def is_terminal(self) -> bool:
-        return self.current_interaction() is None
 
     def player_name(self, player_id: str) -> str:
         return player_id
 
-    def config(self) -> dict[str, Any]:
-        return {}
+    # --- transitions -----------------------------------------------------------
 
-    def state_dict(self) -> dict[str, Any]:
-        """Serializable runtime state for checkpoints."""
-        raise NotImplementedError(f"{type(self).__name__} does not support checkpoints")
+    def step(self, *, player_id: str, action: Action) -> StepResult:
+        """Apply one action. ``n_steps`` counts accepted actions only."""
+        result = self._step(player_id=player_id, action=action)
+        if result.accepted:
+            self.n_steps += 1
+        return result
 
-    def load_state_dict(self, data: dict[str, Any]) -> None:
-        raise NotImplementedError(f"{type(self).__name__} does not support checkpoints")
+    @abstractmethod
+    def _step(self, *, player_id: str, action: Action) -> StepResult:
+        """Apply one action. Legality is checked HERE, by each game.
+
+        If the action is not legal, change nothing and return
+        ``StepResult(accepted=False, error=<why>)``.
+        """
+
+    # --- saving ------------------------------------------------------------------
+
+    def save(self, *, path: str | Path) -> Path:
+        """Pickle the whole environment, RNG included."""
+        return save_pickle(path=path, value=self)
+
+    def load(self, *, path: str | Path) -> None:
+        """Adopt the state saved at ``path``.
+
+        Raises ``ValueError`` naming every key whose value differs between the
+        saved ``game_config`` and this environment's, or that only one of them has.
+        """
+        saved = load_pickle(path=path)
+        if type(saved) is not type(self):
+            raise TypeError(f"{path} holds a {type(saved).__name__}, not a {type(self).__name__}")
+        mismatched = config_mismatches(saved=saved.game_config, current=self.game_config)
+        if mismatched:
+            raise ValueError(f"saved game_config does not match this environment's: {mismatched}")
+        self.__dict__.clear()
+        self.__dict__.update(saved.__dict__)
 
 
-@dataclass(frozen=True)
-class GameSpec:
-    """Everything the rest of the framework needs to know about one game."""
-
-    name: str
-    make_env: Callable[..., GameEnv]
-    rules_text: str = ""
-    """Plain-language rules, used by the LLM agent's system prompt."""
-    render_observation: Callable[..., str] | None = None
-    """Turns an observation into prompt text for LLM agents."""
-    scripted_policy: Callable[..., AgentOutput] | None = None
-    """Default rule-based policy for deterministic agents."""
+def config_mismatches(*, saved: dict[str, Any], current: dict[str, Any]) -> list[str]:
+    """Keys that are missing from one side or have different values, sorted."""
+    keys = set(saved) | set(current)
+    return sorted(key for key in keys if key not in saved or key not in current or saved[key] != current[key])

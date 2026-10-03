@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from selfplay_worlds.core.types import AgentOutput, StepResult
-from selfplay_worlds.games.coup import CoupEnv
+from selfplay_worlds.core.env import StepResult
+from selfplay_worlds.games.coup import CoupAction, CoupEnv
 from selfplay_worlds.games.coup.cards import FULL_DECK
 
 
@@ -16,36 +16,40 @@ def new_game(
     num_players: int | None = None,
 ) -> CoupEnv:
     """A Coup game with a fixed opening position."""
-    env = CoupEnv(
-        num_players=num_players or len(hands),
-        initial_hands=hands,
-        initial_coins=coins,
-        starting_player=start,
+    return CoupEnv(
+        game_config={
+            "num_players": num_players or len(hands),
+            "initial_hands": hands,
+            "initial_coins": coins,
+            "starting_player": start,
+            "seed": seed,
+        }
     )
-    env.reset(seed=seed)
-    return env
 
 
-def act(env, player_id: str, action_type: str, *, message: str | None = None, **fields) -> StepResult:
+def act(env, player_id: str, action_type: str, **fields) -> StepResult:
     """Step the environment with one action and fail the test if it is rejected."""
-    output = AgentOutput(action={"type": action_type, **fields}, message=message)
-    result = env.step(player_id=player_id, output=output)
+    result = env.step(player_id=player_id, action=CoupAction.from_dict({"type": action_type, **fields}))
     assert result.accepted, result.error
     return result
 
 
 def phase(env) -> str | None:
-    interaction = env.current_interaction()
-    return None if interaction is None else interaction.phase
+    current = env.get_dialogue_phase()
+    return None if current is None else current.phase
 
 
 def eligible(env) -> list[str]:
-    return list(env.current_interaction().eligible_players)
+    return list(env.get_dialogue_phase().eligible)
+
+
+def history(env) -> list[str]:
+    return env.get_state()["history"]
 
 
 def player(env, player_id: str) -> dict:
     """God view of one player (hidden cards included). Tests only."""
-    return {p["id"]: p for p in env.full_state()["players"]}[player_id]
+    return {p["id"]: p for p in env.get_state(view="full")["players"]}[player_id]
 
 
 def coins(env, player_id: str) -> int:
@@ -62,7 +66,7 @@ def revealed(env, player_id: str) -> list[str]:
 
 def all_cards(env) -> list[str]:
     """Every card in the game, wherever it is. Always the full 15-card deck."""
-    state = env.full_state()
+    state = env.get_state(view="full")
     cards = list(state["deck"]) + list(state["exchange_draw"])
     for p in state["players"]:
         cards += p["hidden"] + p["revealed"]

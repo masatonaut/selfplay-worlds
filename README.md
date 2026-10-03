@@ -9,7 +9,7 @@ Common environments and infrastructure for multi-agent LLM self-play in strategi
 - [`docs/architecture.md`](docs/architecture.md) — detailed runtime design
 - [`docs/progress.md`](docs/progress.md) — current validation status
 
-> One real game (Coup) works end-to-end, including a full three-player run with a real model through vLLM on CARC. The environment exposes the current interaction structure, and the runner supports single actions, response windows, discussion, and simultaneous actions. Coup is the first implementation because it tests more than a simple alternating-turn loop.
+> One real game (Coup) works end-to-end. The environment exposes the current dialogue phase, and `ConversationGame` supports single actions, response windows, discussion, and simultaneous actions. Coup is the first implementation because it tests more than a simple alternating-turn loop.
 
 ## Motivation
 
@@ -22,30 +22,29 @@ Games differ not only in their rules, but in **interaction structure**: who may 
 | Open discussion | investigators argue about who the murderer is |
 | Simultaneous actions | everyone votes or loads a bag without seeing the others |
 
-A framework built around one `current_player` and an alternating loop cannot express the last three. Here, every decision point is an explicit `Interaction` with a mode, a game-specific phase, and the set of players who may act.
+A framework built around one `current_player` and an alternating loop cannot express the last three. Here, every decision point is an explicit `DialoguePhase` with a mode, a game-specific phase, the players who may act, and how much talk comes first.
 
 ## Core design
 
 ```mermaid
 flowchart TD
-    ENV[GameEnv] -->|current interaction| INT[Interaction]
-    INT --> RUN[Runner]
-    RUN --> SCH[Scheduler]
-    RUN -->|player observation, typed legal actions| AG[Agent + AgentState]
-    AG -.-> INF[InferenceBackend]
-    INF -.-> AG
-    AG -->|"AgentOutput(message, action)"| RUN
-    RUN -->|step| ENV
-    RUN --> LOG[EpisodeRecorder]
-    RUN --> CKPT[CheckpointStore]
+    ENV[GameEnv] -->|dialogue phase| PH[DialoguePhase]
+    PH --> CG[ConversationGame]
+    CG --> SCH[Scheduler]
+    CG -->|observation + visible conversation| POL[Policy]
+    POL -.-> INF[InferenceBackend]
+    INF -.-> POL
+    POL -->|message / answer dict| CG
+    CG -->|"Action.from_answer, step"| ENV
+    CG --> REC[ConversationRecord]
+    CG --> SAVE[run folder]
 ```
 
-- **CoupEnv** owns one serializable **CoupState** and is the source of truth for rules, hidden state, legal actions, observations, and the result. It never calls a model.
-- **Interaction** says what is happening now: `phase` (game rule), `mode` (`SINGLE`, `RESPONSE_WINDOW`, `DISCUSSION`, `SIMULTANEOUS`), and who **may** act.
-- **Scheduler** decides who is **asked first**. The default is deterministic round robin.
-- **Runner** connects the components, retries invalid answers, and contains no game rules.
-- **Agent** owns a serializable `AgentState`, sees only its own player's observation, and returns a `message` and/or a structured action.
-- **InferenceBackend** (mock, OpenRouter, vLLM) is used only by LLM agents. **EpisodeRecorder** writes the research record. **CheckpointStore** writes recovery state separately.
+- **GameEnv** is the source of truth for settings (`game_config`, seed included), rules, hidden state, legality and observations. It never sees talk or calls a model. `get_state()` always reports `done` and `rewards`. It pickles itself and refuses to load a save made with a different config.
+- **DialoguePhase** says what is happening now: `phase` (game rule), `mode` (`ACTION`, `RESPONSE_WINDOW`, `DISCUSSION`, `SIMULTANEOUS`), who **may** act, and how many talk rounds come first.
+- **ConversationGame** runs each phase: talk, answers, building the game's `Action` from each answer, retries with the reason, fallbacks. It keeps the **ConversationRecord** and saves or loads a whole game. It contains no game rules.
+- **Scheduler** decides who is **asked first**. The default is the environment's order.
+- **Policy** sees only its own observation and the conversation it may see. **ScriptedPolicy** plays seeded rules; **Player** asks a model and parses `<thinking>` and `<answer>`. Policies save themselves; a Player is saved without its model.
 
 Details: [`docs/architecture.md`](docs/architecture.md).
 
@@ -53,11 +52,10 @@ Details: [`docs/architecture.md`](docs/architecture.md).
 
 **WORKING NOW**
 - Coup end-to-end, 2 to 6 players, rules checked against two rulebook transcriptions ([`docs/coup-rules.md`](docs/coup-rules.md))
-- `SINGLE` and `RESPONSE_WINDOW` interactions
-- Scripted, random and LLM agents, including a real Qwen2.5-7B-Instruct run through vLLM on CARC
-- One JSON episode log per game, readable terminal trace, deterministic seeds
-- 135 tests, no model, API key or GPU needed (one is skipped without the optional `llm` extra)
-- Typed Coup state, phases, and actions; per-agent state; usage budgets; atomic checkpoint and deterministic resume
+- `ACTION` and `RESPONSE_WINDOW` phases, with table talk before decisions
+- Scripted, random and LLM (`Player`) policies; the LLM path is tested offline with a mock model
+- One run folder per game (settings, environment, conversation record, policies), saved after every step; exact resume
+- 164 tests, no model, API key or GPU needed (one is skipped without the optional `llm` extra)
 
 **TEST-SUPPORTED** (proven with a test fixture, no real game yet)
 - `DISCUSSION`
@@ -69,9 +67,7 @@ Details: [`docs/architecture.md`](docs/architecture.md).
 
 ### Real-model validation
 
-On CARC, commit `9dcc33f7c5fc68ec03a8501221d0b8bbd8d58d83` completed one full three-player Coup episode with `Qwen/Qwen2.5-7B-Instruct` served by vLLM on one A40. Alice (`p0`) won after 5 turns. The run made 15 real model calls, recorded 18 accepted events and 3 forced moves, exercised challenge, block, and challenge-block phases, and produced 0 invalid outputs, retries, or fallbacks. Usage was 10,883 input tokens and 180 output tokens. The checkpoint and artifact validation both passed.
-
-The original target, `google/gemma-4-31B-it`, is cached and queued on two same-node A40 GPUs with tensor parallelism. This is not yet a claimed Gemma result.
+On CARC, commit `9dcc33f` (before the GameEnv / Policy / ConversationGame redesign) completed one full three-player Coup episode with `Qwen/Qwen2.5-7B-Instruct` served by vLLM on one A40, with 0 invalid outputs. That run used the earlier `{"message", "action"}` prompt. The current `Player` prompt (`<thinking>` / `<answer>`) has not been run against a real model yet.
 
 ## Quick start
 
@@ -83,7 +79,7 @@ uv run pytest
 uv run python examples/run_coup.py
 ```
 
-Options: `--seed N`, `--players 2..6`, `--quiet`, `--full-state`, `--agents scripted|random|llm`.
+Options: `--seed N`, `--players 2..6`, `--quiet`, `--policies scripted|random|llm`, `--out FOLDER`, `--resume FOLDER`.
 
 Example trace (seed 0, the default):
 
@@ -101,41 +97,41 @@ Turn 2: Alice (2 coins)
     Alice claims the Captain and tries to steal from Carol.
   ...
 Result: Carol wins after 14 turns (seed 0).
-Agent decisions: 33, forced moves applied automatically: 3, invalid outputs: 0.
-Episode log: runs/coup-seed0-3p.json
+Decisions asked: 33, forced moves applied automatically: 3, invalid answers: 0.
+Saved game: runs/coup-seed0-3p
 ```
 
-A legacy schema 1.0 sample episode file is committed at [`examples/output/coup-seed0-3p.json`](examples/output/coup-seed0-3p.json). New runs use schema 2.0 and add aggregate inference usage.
+[`examples/output/coup-seed0-3p.json`](examples/output/coup-seed0-3p.json) is a legacy episode file from before the redesign. New runs write a run folder instead.
 
-### LLM agents (optional)
+### LLM players (optional)
 
 ```bash
-uv run python examples/run_coup.py --agents llm --backend mock            # whole LLM path, offline
-export OPENROUTER_API_KEY=...                                             # never commit keys
-uv run --extra llm python examples/run_coup.py --agents llm --backend openrouter --model <model-id>
-uv run --extra llm python examples/run_coup.py --agents llm --backend vllm --model <served-model>   # VLLM_BASE_URL
-uv run --extra llm python examples/run_coup.py --agents llm --backend vllm --model google/gemma-4-31B-it --structured-output
+uv run python examples/run_coup.py --policies llm --backend mock            # whole LLM path, offline
+export OPENROUTER_API_KEY=...                                               # never commit keys
+uv run --extra llm python examples/run_coup.py --policies llm --backend openrouter --model <model-id>
+uv run --extra llm python examples/run_coup.py --policies llm --backend vllm --model <served-model>   # VLLM_BASE_URL
+uv run --extra llm python examples/run_coup.py --resume runs/coup-seed0-3p                          # models are re-attached
 ```
 
 ## Adding a new game
 
-1. Create `src/selfplay_worlds/games/<name>/` with an environment class that implements `GameEnv`.
-2. Split each turn into phases and give each phase one of the four modes.
-3. Write `observe()` so it returns only what that player may know, and test that it does.
-4. Add a `GameSpec`: rules text and `render_observation` for LLM prompts, plus a simple scripted policy.
-5. Register it in `games/__init__.py`; add rule tests and a random-agent stress test.
+1. Create `src/selfplay_worlds/games/<name>/` with an `Action` subclass (`from_answer`, `to_dict`) and a `GameEnv` subclass that reads every setting from `game_config`.
+2. Split each turn into phases and give each phase one of the four modes and its talk rounds.
+3. Write `get_observation` so it returns only what that player may know, plus `history` and `options`, and test that it does.
+4. Make `get_state` report `done` and `rewards`.
+5. Register the environment, an observation renderer and the rules text in `games/__init__.py`; add rule tests and a random-policy stress test.
 
-The Runner, agents, logger and inference code do not change for a game that uses the existing modes.
+ConversationGame, policies, the record and inference code do not change for a game that uses the existing modes.
 
 ## Design principles
 
-1. The environment is the source of truth.
-2. Agents see only player-specific observations.
+1. The environment is the source of truth, and `game_config` holds every setting.
+2. Policies see only player-specific observations and the conversation they may see.
 3. Interaction structure is explicit.
-4. Message and structured action are separate.
+4. Talk and answers are separate calls; only the game builds actions.
 5. Scheduling is an experimental policy, separate from rules.
-6. Runner orchestration is independent of game rules.
-7. Episode records and recovery checkpoints have separate jobs.
+6. ConversationGame is independent of game rules.
+7. A saved game can be resumed exactly, and a mismatched save is refused.
 8. The inference backend is replaceable and usage is explicit.
 9. RL is a future consumer, not part of the core environment.
 
@@ -143,13 +139,13 @@ The Runner, agents, logger and inference code do not change for a game that uses
 
 ```text
 src/selfplay_worlds/
-  core/        GameEnv, Interaction, Scheduler, Runner, AgentOutput, DecisionEvent
-  agents/      AgentState, ScriptedAgent, RandomAgent, LLMAgent
+  core/        GameEnv, Action, DialoguePhase, StepResult, Scheduler, ConversationGame, ConversationRecord
+  policies/    Policy, ScriptedPolicy, RandomPolicy, ReplayPolicy, Player
   inference/   backends, GenerationConfig, UsageTracker
-  episodes/    EpisodeRecorder, CheckpointStore, TracePrinter
-  games/coup/  CoupEnv, CoupState, CoupAction, rules, prompts, scripted policy
-examples/      run_coup.py and a sample episode
-tests/         rule, runner, logging, LLM-path and stress tests; fixtures/ holds test-only environments
+  episodes/    TracePrinter
+  games/coup/  CoupEnv, CoupState, CoupAction, rules, prompts, CoupHeuristicPolicy
+examples/      run_coup.py and a legacy sample episode
+tests/         rule, conversation, policy, save/resume and stress tests; fixtures/ holds test-only environments
 docs/          architecture, design decisions, Coup rules, game matrix, CARC setup, roadmap, progress, meeting notes
 scripts/carc/  environment check and an example Slurm proxy for CARC
 ```

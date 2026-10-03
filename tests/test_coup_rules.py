@@ -10,16 +10,16 @@ from helpers import (
     coins,
     eligible,
     hidden,
+    history,
     new_game,
     phase,
     revealed,
 )
 
-from selfplay_worlds.core.interaction import InteractionMode
-from selfplay_worlds.core.types import AgentOutput
-from selfplay_worlds.games.coup import CoupEnv
+from selfplay_worlds.core.env import DialogueMode
+from selfplay_worlds.games.coup import CoupAction, CoupActionType, CoupEnv
 
-# ------------------------------------------------------------ plain actions (SINGLE)
+# ------------------------------------------------------------ plain actions (ACTION)
 
 
 def test_income_resolves_without_any_response_window():
@@ -45,10 +45,10 @@ def test_coup_costs_seven_and_cannot_be_challenged_or_blocked():
 def test_claim_opens_a_response_window_for_everyone_else_in_seat_order():
     env = new_game({"p0": ["duke", "captain"], "p1": ["contessa", "assassin"], "p2": ["ambassador", "duke"]}, start="p1")
     act(env, "p1", "tax")
-    interaction = env.current_interaction()
+    interaction = env.get_dialogue_phase()
     assert interaction.phase == "challenge_action"
-    assert interaction.mode is InteractionMode.RESPONSE_WINDOW
-    assert interaction.eligible_players == ("p2", "p0")  # clockwise from the actor
+    assert interaction.mode is DialogueMode.RESPONSE_WINDOW
+    assert interaction.eligible == ("p2", "p0")  # clockwise from the actor
 
 
 def test_unchallenged_tax_gives_three_coins():
@@ -87,7 +87,7 @@ def test_successful_challenge_makes_the_action_fail():
     assert phase(env) == "lose_influence" and eligible(env) == ["p0"]
     act(env, "p0", "reveal", card="assassin")
     assert coins(env, "p0") == 2
-    assert "The action fails." in env.public_history()
+    assert "The action fails." in history(env)
     assert phase(env) == "action" and eligible(env) == ["p1"]
 
 
@@ -99,7 +99,7 @@ def test_successfully_challenged_assassination_refunds_the_three_coins():
     assert coins(env, "p0") == 3  # refunded
     act(env, "p0", "reveal", card="captain")
     assert len(hidden(env, "p1")) == 2
-    assert "The action fails and Alice gets the 3 coins back." in env.public_history()
+    assert "The action fails and Alice gets the 3 coins back." in history(env)
 
 
 # ------------------------------------------------------------------- blocks
@@ -115,7 +115,7 @@ def test_foreign_aid_can_be_blocked_by_any_other_player():
     act(env, "p0", "pass")
     act(env, "p1", "pass")
     assert coins(env, "p0") == 2
-    assert "The block stands. Alice's foreign_aid fails." in env.public_history()
+    assert "The block stands. Alice's foreign_aid fails." in history(env)
 
 
 def test_unblocked_foreign_aid_gives_two_coins():
@@ -143,7 +143,7 @@ def test_steal_takes_only_one_coin_from_a_player_with_one_coin():
     act(env, "p2", "pass")
     act(env, "p1", "pass")
     assert (coins(env, "p0"), coins(env, "p1")) == (3, 0)
-    assert "Alice steals 1 coin from Bob." in env.public_history()
+    assert "Alice steals 1 coin from Bob." in history(env)
 
 
 def test_blocked_assassination_keeps_the_three_coins_spent():
@@ -157,7 +157,7 @@ def test_blocked_assassination_keeps_the_three_coins_spent():
     act(env, "p0", "pass")
     assert coins(env, "p0") == 0  # a blocked action is not refunded
     assert len(hidden(env, "p1")) == 2
-    assert "The block stands. Alice's assassinate fails. The 3 coins stay spent." in env.public_history()
+    assert "The block stands. Alice's assassinate fails. The 3 coins stay spent." in history(env)
 
 
 # ---------------------------------------------------- nested challenge of a block
@@ -183,7 +183,7 @@ def test_challenging_a_bluffed_block_lets_the_action_resolve():
     act(env, "p2", "challenge")
     act(env, "p1", "reveal", card="contessa")
     assert coins(env, "p0") == 4
-    assert "The block fails." in env.public_history()
+    assert "The block fails." in history(env)
 
 
 def test_steal_blocked_with_a_bluffed_ambassador_is_challenged():
@@ -212,7 +212,7 @@ def test_losing_a_challenge_then_being_assassinated_removes_two_influences():
     assert phase(env) == "lose_influence" and eligible(env) == ["p1"]
     act(env, "p1", "reveal", card="contessa")
     assert hidden(env, "p1") == [] and coins(env, "p1") == 0
-    assert "Bob has no influence left and is out of the game." in env.public_history()
+    assert "Bob has no influence left and is out of the game." in history(env)
 
 
 def test_bluffed_contessa_that_is_challenged_loses_two_influences():
@@ -256,7 +256,7 @@ def test_target_eliminated_by_a_lost_challenge_ends_the_action():
     act(env, "p0", "assassinate", target="p1")
     act(env, "p1", "challenge")
     act(env, "p1", "reveal", card="captain")
-    assert "Bob is already out, so nothing more happens." in env.public_history()
+    assert "Bob is already out, so nothing more happens." in history(env)
     assert phase(env) == "action" and eligible(env) == ["p2"]
 
 
@@ -265,64 +265,67 @@ def test_target_eliminated_by_a_lost_challenge_ends_the_action():
 
 def test_exchange_draws_two_and_returns_two():
     env = new_game({"p0": ["ambassador", "captain"], "p1": ["contessa", "assassin"], "p2": ["duke", "duke"]})
-    deck_size = len(env.full_state()["deck"])
+    deck_size = len(env.get_state(view="full")["deck"])
     act(env, "p0", "exchange")
     act(env, "p1", "pass")
     act(env, "p2", "pass")
     assert phase(env) == "exchange" and eligible(env) == ["p0"]
-    drawn = env.observe(player_id="p0")["exchange_drawn"]
+    drawn = env.get_observation(player_id="p0")["exchange_drawn"]
     act(env, "p0", "keep", cards=sorted(["captain", drawn[0]]))
     assert sorted(hidden(env, "p0")) == sorted(["captain", drawn[0]])
-    assert len(env.full_state()["deck"]) == deck_size
+    assert len(env.get_state(view="full")["deck"]) == deck_size
     assert all_cards(env) == FULL_DECK_SORTED
 
 
-# ------------------------------------------------------- end of game and talk
+# ---------------------------------------------------------------- end of game
 
 
 def test_last_player_with_influence_wins():
     env = new_game({"p0": ["duke", "captain"], "p1": ["contessa"]}, coins={"p0": 7})
     act(env, "p0", "coup", target="p1")
     act(env, "p1", "reveal", card="contessa")
-    assert env.current_interaction() is None
-    assert env.is_terminal()
-    result = env.result()
-    assert result.winners == ["p0"]
-    assert result.payoffs == {"p0": 1.0, "p1": 0.0}
-    assert result.termination_reason == "last_player_with_influence"
-    assert env.public_history()[-1] == "Alice is the last player with influence and wins."
+    assert env.get_dialogue_phase() is None
+    state = env.get_state()
+    assert state["done"] is True
+    assert state["winners"] == ["p0"]
+    assert state["rewards"] == {"p0": 1.0, "p1": 0.0}
+    assert state["termination_reason"] == "last_player_with_influence"
+    assert history(env)[-1] == "Alice is the last player with influence and wins."
 
 
 def test_nothing_is_accepted_after_the_game_ends():
     env = new_game({"p0": ["duke", "captain"], "p1": ["contessa"]}, coins={"p0": 7})
     act(env, "p0", "coup", target="p1")
     act(env, "p1", "reveal", card="contessa")
-    result = env.step(player_id="p0", output=AgentOutput(action={"type": "income"}))
+    result = env.step(player_id="p0", action=CoupAction(CoupActionType.INCOME))
     assert not result.accepted and result.error == "the game is over"
     assert env.legal_actions(player_id="p0") == []
 
 
 def test_turn_limit_ends_the_game_without_a_winner():
     """Not a Coup rule: a safety net for agents that loop (docs/coup-rules.md)."""
-    env = CoupEnv(num_players=3, starting_player="p0", max_turns=2)
-    env.reset(seed=0)
+    env = CoupEnv(game_config={"num_players": 3, "starting_player": "p0", "max_turns": 2, "seed": 0})
     act(env, "p0", "income")
     act(env, "p1", "income")
-    assert env.current_interaction() is None
-    result = env.result()
-    assert result.winners == [] and result.termination_reason == "turn_limit"
-    assert result.payoffs == {"p0": 0.0, "p1": 0.0, "p2": 0.0}
-    assert env.public_history()[-1] == "The turn limit (2) is reached. The game ends without a winner."
+    assert env.get_dialogue_phase() is None
+    state = env.get_state()
+    assert state["done"] is True
+    assert state["winners"] == [] and state["termination_reason"] == "turn_limit"
+    assert state["rewards"] == {"p0": 0.0, "p1": 0.0, "p2": 0.0}
+    assert history(env)[-1] == "The turn limit (2) is reached. The game ends without a winner."
 
 
-def test_result_is_none_while_the_game_is_running():
+def test_state_is_not_done_and_rewards_are_zero_while_running():
     env = new_game({"p0": ["duke", "captain"], "p1": ["contessa", "assassin"]})
-    assert env.result() is None
+    for view in ("public", "full"):
+        state = env.get_state(view=view)
+        assert state["done"] is False
+        assert state["rewards"] == {"p0": 0.0, "p1": 0.0}
 
 
-def test_messages_are_public_and_separate_from_the_action():
+def test_the_action_not_the_talk_is_the_claim():
+    """Talk lives in the conversation record. The environment never sees it."""
     env = new_game({"p0": ["captain", "assassin"], "p1": ["contessa", "assassin"], "p2": ["ambassador", "duke"]})
-    result = act(env, "p0", "tax", message="I have the Duke, trust me.")
-    assert result.public_events[0] == 'Alice says: "I have the Duke, trust me."'
-    assert result.public_events[1] == "Alice claims the Duke and takes Tax."
-    assert env.public_state()["pending_action"]["claim"] == "duke"  # the action, not the words, is the claim
+    result = act(env, "p0", "tax")
+    assert result.public_events == ["Alice claims the Duke and takes Tax."]
+    assert env.get_state()["pending_action"]["claim"] == "duke"

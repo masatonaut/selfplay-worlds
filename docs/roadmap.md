@@ -4,7 +4,7 @@ Each milestone ends with something that runs and is tested. Dates are not fixed.
 
 ## M1: generic framework and Coup (this milestone)
 
-- [x] `GameEnv`, typed `CoupState` and `CoupAction`, `Interaction`, `Scheduler`, `Runner`, `AgentState`, `InferenceBackend`, `EpisodeRecorder`, and `CheckpointStore`
+- [x] `GameEnv`, typed `CoupState` and `CoupAction`, `DialoguePhase`, `Scheduler`, `ConversationGame`, `ConversationRecord`, `Policy` / `ScriptedPolicy` / `Player`, `InferenceBackend`, and run-folder save and resume (redesigned 2026-10-03)
 - [x] Coup end-to-end with explicit phases, 2 to 6 players, rule tests and random-game stress tests
 - [x] `DISCUSSION` and `SIMULTANEOUS` proven with a test fixture
 - [x] One JSON file per episode; readable terminal trace; deterministic demo
@@ -15,7 +15,7 @@ Each milestone ends with something that runs and is tested. Dates are not fixed.
 
 - Candidates: Sheriff of Nottingham (negotiation, simultaneous loading) or Deception (discussion, roles, a silent player). See `docs/game-format-matrix.md`.
 - Verify its rules against the rulebook first, like `docs/coup-rules.md`.
-- Success test: the second game needs **no changes** to the Runner, agents or logger, or the changes are small and justified.
+- Success test: the second game needs **no changes** to ConversationGame, policies or the record, or the changes are small and justified.
 
 ## M3: multiple LLM backends and controlled evaluation
 
@@ -27,7 +27,7 @@ Each milestone ends with something that runs and is tested. Dates are not fixed.
 
 - Run many episodes (models against themselves and each other), with batching and parallel episodes.
 - Tools to aggregate episode JSON files into tables.
-- Check whether the Runner's order policy changes outcomes (first-responder advantage).
+- Check whether the Scheduler's order policy changes outcomes (first-responder advantage).
 
 ## M5: reinforcement learning, if needed
 

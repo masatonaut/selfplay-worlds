@@ -1,121 +1,130 @@
 """DISCUSSION and SIMULTANEOUS, exercised with a TEST FIXTURE (tests/fixtures).
 
-Coup only needs SINGLE and RESPONSE_WINDOW. These tests show the same Runner
-also handles open discussion and simultaneous moves. They do not mean a real
-game with these modes exists yet (see docs/roadmap.md, Milestone 2).
+Coup only needs ACTION and RESPONSE_WINDOW. These tests show the same
+ConversationGame also handles open discussion and simultaneous moves. They do
+not mean a real game with these modes exists yet (see docs/roadmap.md, Milestone 2).
 """
+
+import json
 
 from fixtures.talk_then_vote import TalkThenVoteEnv
 
-from selfplay_worlds.agents.base import Agent
-from selfplay_worlds.core.interaction import InteractionMode
-from selfplay_worlds.core.runner import Runner
+from selfplay_worlds.core import ConversationGame
 from selfplay_worlds.core.scheduler import Scheduler
-from selfplay_worlds.core.types import AgentOutput
-from selfplay_worlds.episodes.log import EpisodeLogger
+from selfplay_worlds.policies import ScriptedPolicy
+
+GAME = "talk_then_vote_fixture"
 
 
-class Talker(Agent):
-    """Speaks in the discussion and votes for a fixed player."""
+class Talker(ScriptedPolicy):
+    """Talks in the discussion and votes for a fixed player."""
 
     def __init__(self, name, vote_for, env=None):
-        super().__init__()
+        super().__init__(game_name=GAME)
         self.name, self.vote_for, self.env = name, vote_for, env
-        self.vote_calls = []
+        self.vote_calls, self.talk_phases = [], []
 
-    def act(self, *, observation, interaction, legal_actions, feedback=None):
-        if interaction.mode is InteractionMode.DISCUSSION:
-            return AgentOutput(message=f"I am {self.name}. I have heard {len(observation['history'])} messages.")
-        if feedback is None and self.env is not None:
+    def get_message(self, *, observation, conversation):
+        self.talk_phases.append(observation["phase"])
+        return f"I am {self.name}. I have heard {len(conversation)} messages."
+
+    def step(self, *, observation, conversation):
+        if "feedback" not in observation and self.env is not None:
             # SIMULTANEOUS: no vote may have reached the environment yet.
-            self.vote_calls.append(len(self.env.full_state()["votes"]))
-        return AgentOutput(action={"type": "vote", "target": self.vote_for})
+            self.vote_calls.append(len(self.env.get_state(view="full")["votes"]))
+        return {"type": "vote", "target": self.vote_for}
 
 
-def _play(env, agents, **runner_kwargs):
-    steps = []
-    logger = EpisodeLogger()
-    result = Runner(on_event=steps.append, **runner_kwargs).run(env=env, agents=agents, seed=0, logger=logger)
-    return result, [s for s in steps if s["kind"] == "step"], logger.record
+def _talkers(env=None, targets=(("p0", "p1"), ("p1", "p2"), ("p2", "p1"))):
+    return {pid: Talker(pid, target, env=env) for pid, target in targets}
 
 
-def test_discussion_repeats_the_order_until_the_environment_closes_it():
-    env = TalkThenVoteEnv(rounds=2)
-    agents = {"p0": Talker("p0", "p1"), "p1": Talker("p1", "p2"), "p2": Talker("p2", "p1")}
-    _, steps, _ = _play(env, agents)
-    talk = [s for s in steps if s["interaction"]["mode"] == "discussion"]
-    assert [s["actor"] for s in talk] == ["p0", "p1", "p2", "p0", "p1", "p2"]
-    assert len({s["interaction"]["id"] for s in talk}) == 1  # one open discussion
-    assert all(s["output"]["action"] is None for s in talk)  # message only
+def _play(env, players, **kwargs):
+    game = ConversationGame(env=env, players=players, **kwargs)
+    final = game.run()
+    return final, game
 
 
-def test_who_speaks_when_is_a_runner_decision():
+def _kind(game, kind):
+    return [e for e in game.record.entries if e["kind"] == kind]
+
+
+def test_discussion_runs_every_talk_round_in_order_then_closes():
+    _, game = _play(TalkThenVoteEnv(game_config={"rounds": 2}), _talkers())
+    talk = [e for e in _kind(game, "message") if e["mode"] == "discussion"]
+    assert [e["player_id"] for e in talk] == ["p0", "p1", "p2", "p0", "p1", "p2"]
+    assert len({e["phase_id"] for e in talk}) == 1  # one open discussion
+    assert talk[-1]["content"] == "I am p2. I have heard 5 messages."  # everyone hears what came before
+    done = [e for e in _kind(game, "action") if e["mode"] == "discussion"]
+    assert all(e["source"] == "forced" and e["content"] == {"type": "done"} for e in done)
+
+
+def test_who_speaks_when_is_a_scheduling_decision():
     class P2First(Scheduler):
-        def order(self, *, interaction):
+        def order(self, *, phase):
             return ["p2", "p0", "p1"]
 
-    env = TalkThenVoteEnv(rounds=1)
-    agents = {"p0": Talker("p0", "p1"), "p1": Talker("p1", "p2"), "p2": Talker("p2", "p1")}
-    _, steps, _ = _play(env, agents, scheduler=P2First())
-    talk = [s["actor"] for s in steps if s["interaction"]["mode"] == "discussion"]
-    assert talk == ["p2", "p0", "p1"]
-
-
-def test_discussion_requires_a_message():
-    class Silent(Agent):
-        def act(self, *, observation, interaction, legal_actions, feedback=None):
-            if interaction.mode is InteractionMode.DISCUSSION:
-                return AgentOutput(action={"type": "speak"})  # no words
-            return AgentOutput(action=legal_actions[0])
-
-    env = TalkThenVoteEnv(rounds=1)
-    agents = {"p0": Silent(), "p1": Talker("p1", "p0"), "p2": Talker("p2", "p0")}
-    _, steps, _ = _play(env, agents, max_retries=1)
-    p0_talk = [s for s in steps if s["actor"] == "p0" and s["interaction"]["mode"] == "discussion"]
-    assert [s["accepted"] for s in p0_talk] == [False, False, True]
-    assert p0_talk[0]["error"] == "a message is required during the discussion"
-    assert p0_talk[-1]["fallback"] is True
-    assert p0_talk[-1]["output"]["message"] == "(no valid response)"
+    _, game = _play(TalkThenVoteEnv(game_config={"rounds": 1}), _talkers(), scheduler=P2First())
+    assert [e["player_id"] for e in _kind(game, "message")] == ["p2", "p0", "p1"]
 
 
 def test_simultaneous_vote_asks_everyone_before_any_vote_is_applied():
-    env = TalkThenVoteEnv(rounds=0)
-    agents = {pid: Talker(pid, target, env=env) for pid, target in (("p0", "p1"), ("p1", "p2"), ("p2", "p1"))}
-    result, steps, _ = _play(env, agents)
-    assert [agents[p].vote_calls for p in ("p0", "p1", "p2")] == [[0], [0], [0]]
-    votes = [s for s in steps if s["interaction"]["mode"] == "simultaneous"]
-    assert len({s["interaction"]["id"] for s in votes}) == 1
-    assert result.winners == ["p0", "p2"]
-    assert env.public_history()[-1] == "p1 is voted out."
+    env = TalkThenVoteEnv(game_config={"rounds": 0})
+    players = _talkers(env=env)
+    final, game = _play(env, players)
+    assert [players[p].vote_calls for p in ("p0", "p1", "p2")] == [[0], [0], [0]]
+    votes = [e for e in _kind(game, "action") if e["mode"] == "simultaneous"]
+    assert len({e["phase_id"] for e in votes}) == 1
+    assert final["winners"] == ["p0", "p2"]
+    assert final["history"][-1] == "p1 is voted out."
 
 
 def test_votes_stay_secret_until_everyone_has_voted():
-    env = TalkThenVoteEnv(rounds=0)
-    agents = {pid: Talker(pid, target) for pid, target in (("p0", "p1"), ("p1", "p2"), ("p2", "p1"))}
-    _, _, record = _play(env, agents)
-    log = record["public_log"]
-    assert log[:3] == ["p0 has voted.", "p1 has voted.", "p2 has voted."]
-    assert log[3] == "Votes: p0 -> p1, p1 -> p2, p2 -> p1."
+    final, _ = _play(TalkThenVoteEnv(game_config={"rounds": 0}), _talkers())
+    assert final["history"][:3] == ["p0 has voted.", "p1 has voted.", "p2 has voted."]
+    assert final["history"][3] == "Votes: p0 -> p1, p1 -> p2, p2 -> p1."
 
 
-def test_messages_are_rejected_during_the_vote():
-    class Chatty(Talker):
-        def act(self, *, observation, interaction, legal_actions, feedback=None):
-            output = super().act(observation=observation, interaction=interaction, legal_actions=legal_actions, feedback=feedback)
-            if interaction.mode is InteractionMode.SIMULTANEOUS and feedback is None:
-                output.message = "Vote with me!"
-            return output
+def test_nobody_is_asked_to_talk_during_the_vote():
+    players = _talkers()
+    _play(TalkThenVoteEnv(game_config={"rounds": 1}), players)
+    assert all(p.talk_phases == ["discussion"] for p in players.values())
 
-    env = TalkThenVoteEnv(rounds=0)
-    agents = {"p0": Chatty("p0", "p1"), "p1": Talker("p1", "p2"), "p2": Talker("p2", "p1")}
-    _, steps, _ = _play(env, agents)
-    p0 = [s for s in steps if s["actor"] == "p0"]
-    assert p0[0]["accepted"] is False and "no messages" in p0[0]["error"]
-    assert p0[1]["accepted"] is True  # the retry dropped the message
+
+def test_a_rejected_simultaneous_answer_is_retried_with_typed_actions():
+    """Regression for the old Runner, which turned typed actions into dicts on retry."""
+
+    class SecondTry(Talker):
+        def step(self, *, observation, conversation):
+            if "feedback" not in observation:
+                return {"type": "vote", "target": self.name}  # voting for yourself is illegal
+            self.retry_observation = observation
+            return super().step(observation=observation, conversation=conversation)
+
+    env = TalkThenVoteEnv(game_config={"rounds": 0})
+    players = {**_talkers(), "p0": SecondTry("p0", "p1")}
+    final, game = _play(env, players)
+    first, retry = [e for e in _kind(game, "action") if e["player_id"] == "p0"]
+    assert first["accepted"] is False and "illegal action" in first["error"]
+    assert retry["accepted"] is True and retry["source"] == "policy"
+    assert players["p0"].retry_observation["votes_cast"] == 0  # still the pre-vote view
+    assert final["winners"] == ["p0", "p2"]
 
 
 def test_tied_vote():
-    env = TalkThenVoteEnv(rounds=0)
-    agents = {"p0": Talker("p0", "p1"), "p1": Talker("p1", "p2"), "p2": Talker("p2", "p0")}
-    result, _, _ = _play(env, agents)
-    assert result.winners == ["p0", "p1", "p2"]
+    final, _ = _play(TalkThenVoteEnv(game_config={"rounds": 0}), _talkers(targets=(("p0", "p1"), ("p1", "p2"), ("p2", "p0"))))
+    assert final["winners"] == ["p0", "p1", "p2"]
+
+
+def test_resume_between_discussion_and_vote(tmp_path):
+    full_final, full_game = _play(TalkThenVoteEnv(game_config={"rounds": 1}), _talkers())
+
+    game = ConversationGame(env=TalkThenVoteEnv(game_config={"rounds": 1}), players=_talkers())
+    game.step()  # the whole discussion
+    assert game.env.get_dialogue_phase().phase == "vote"
+    game.save(folder=tmp_path / "run")
+
+    resumed = ConversationGame(env=TalkThenVoteEnv(game_config={"rounds": 1}), players=_talkers())
+    resumed.load(folder=tmp_path / "run")
+    assert resumed.run() == full_final
+    assert json.dumps(resumed.record.entries) == json.dumps(full_game.record.entries)

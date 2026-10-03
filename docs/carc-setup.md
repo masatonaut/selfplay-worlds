@@ -225,7 +225,7 @@ Then, in a second terminal on the same node:
 
 ```bash
 export VLLM_BASE_URL=http://localhost:8000/v1
-uv run --extra llm python examples/run_coup.py --agents llm --backend vllm --model <model_id>
+uv run --extra llm python examples/run_coup.py --policies llm --backend vllm --model <model_id>
 ```
 
 The current CARC guides now document a vLLM 0.28 CUDA 12.9 wheel and Gemma 4 examples. We still need to inspect the lab's existing environment and agree on the model cache location before installing or downloading anything.

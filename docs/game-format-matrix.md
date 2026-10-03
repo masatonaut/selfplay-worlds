@@ -83,7 +83,7 @@ How candidate games map onto the four interaction modes. Only Coup is implemente
 - **Structured action:** little; the environment validates the message itself (one word, not the secret word).
 - **Hidden information:** the secret word, for the guesser.
 - **Outcome:** cooperative score.
-- **Framework representation:** already possible, because `step` receives the whole `AgentOutput`, message included. Open design choice: clue as `message` or as an action field.
+- **Framework representation:** the clue must be an action field (for example `{"type": "clue", "word": ...}`), because the environment never sees talk. Table talk around it stays in the conversation record.
 - **Future:** later milestone. A team game such as Trapwords would also need **private team channels**, which the framework does not have yet.
 
 ## What the matrix shows

@@ -34,7 +34,7 @@ Lightweight ADR log. Each entry: **Decision / Why / Alternative / Tradeoff / Sta
 - **Why:** Games differ in interaction structure, not only in rules. A `current_player` field cannot express "any of these three players may challenge" or "everyone submits at once".
 - **Alternative:** A single `current_player` string and an alternating loop.
 - **Tradeoff:** Four modes to understand instead of one. Each mode is small.
-- **Status:** Accepted. `SINGLE` and `RESPONSE_WINDOW` are used by Coup. `DISCUSSION` and `SIMULTANEOUS` are supported by the Runner and tested with small fixtures only.
+- **Status:** Accepted. Since ADR-19 the interaction is a `DialoguePhase` and `SINGLE` is named `ACTION`. `ACTION` and `RESPONSE_WINDOW` are used by Coup. `DISCUSSION` and `SIMULTANEOUS` are supported by `ConversationGame` and tested with small fixtures only.
 
 ## ADR-05 Generic mode plus game-specific phase
 
@@ -50,7 +50,7 @@ Lightweight ADR log. Each entry: **Decision / Why / Alternative / Tradeoff / Sta
 - **Why:** Research may compare what an agent says with what it does. The environment only validates the action. The message is recorded as public table talk.
 - **Alternative:** Parse the action out of free text inside the environment.
 - **Tradeoff:** LLM agents must select a structured action. The response parser lives in the agent, while structural and game-legality checks live in the environment.
-- **Status:** Accepted.
+- **Status:** Superseded by ADR-20 (talk and answers are now separate calls, not two fields of one output).
 
 ## ADR-07 Observation separate from full state
 
@@ -66,7 +66,7 @@ Lightweight ADR log. Each entry: **Decision / Why / Alternative / Tradeoff / Sta
 - **Why:** One file is easy to open, share, diff and later convert into training trajectories. Keeping full state optional keeps normal logs small and readable.
 - **Alternative:** A database, or one line per event (JSONL).
 - **Tradeoff:** Very long episodes produce large files. JSONL can be added later if needed.
-- **Status:** Accepted, schema version `2.0`.
+- **Status:** Superseded by ADR-21 (a run folder with a conversation record).
 
 ## ADR-09 Deterministic scripted agents
 
@@ -98,7 +98,7 @@ Lightweight ADR log. Each entry: **Decision / Why / Alternative / Tradeoff / Sta
 - **Why:** It saves model calls on non-decisions (for example revealing your only remaining card) in every game, not just Coup.
 - **Alternative:** Ask the agent anyway, or special-case it inside each game.
 - **Tradeoff:** The agent never "sees" forced moves. They are still in the log and in the public history.
-- **Status:** Accepted, configurable (`skip_forced_moves`).
+- **Status:** Accepted, configurable (`skip_forced_moves`). Since ADR-19 `ConversationGame` applies forced moves, records them with `"source": "forced"`, and skips that player's talk outside a `DISCUSSION`.
 
 ## ADR-13 The environment enforces the message policy
 
@@ -106,7 +106,7 @@ Lightweight ADR log. Each entry: **Decision / Why / Alternative / Tradeoff / Sta
 - **Why:** Legality, including "no talking during the vote", is a rule, and rules live in the environment.
 - **Alternative:** Let the Runner strip or add messages.
 - **Tradeoff:** Every game has to check the policy in `step`. It is one line.
-- **Status:** Accepted. Tested with the vote phase of the test fixture.
+- **Status:** Superseded by ADR-20. The environment no longer sees talk, so there is no message policy; a phase's `talk_rounds` says whether talk happens.
 
 ## ADR-14 In Coup, talk is attached to decisions
 
@@ -114,7 +114,7 @@ Lightweight ADR log. Each entry: **Decision / Why / Alternative / Tradeoff / Sta
 - **Why:** It keeps every episode a finite sequence of decisions, and every message has a clear place in the log. Games where talk is the main activity use the `DISCUSSION` mode.
 - **Alternative:** An always-open chat channel next to the game.
 - **Tradeoff:** A player cannot speak out of turn (for example the actor while others decide whether to challenge).
-- **Status:** Accepted. Listed as a simplification in `docs/coup-rules.md`.
+- **Status:** Superseded by ADR-20. Coup now has one talk round before each decision (except revealing a card and choosing cards to keep). Still no free chat.
 
 ## ADR-15 LLM agents answer with the number of a legal action
 
@@ -122,7 +122,7 @@ Lightweight ADR log. Each entry: **Decision / Why / Alternative / Tradeoff / Sta
 - **Why:** Choosing a number is the easiest format for a model to get right, and every failure is visible in the log as a rejected output with the raw text.
 - **Alternative:** Free-text actions parsed with fuzzy matching.
 - **Tradeoff:** The model cannot invent actions outside the list, which is the point.
-- **Status:** Accepted. The numbered-action path completed a full real-model Coup episode with Qwen2.5-7B-Instruct through vLLM on CARC with no invalid outputs or fallbacks.
+- **Status:** Refined by ADR-22. The numbered-action path completed a full real-model Coup episode with Qwen2.5-7B-Instruct through vLLM on CARC with no invalid outputs or fallbacks, using the earlier `{"message", "action"}` format.
 
 ## ADR-16 Typed game-specific state and actions
 
@@ -130,7 +130,7 @@ Lightweight ADR log. Each entry: **Decision / Why / Alternative / Tradeoff / Sta
 - **Why:** State ownership, structural validity, and the action vocabulary are visible without forcing future games into Coup fields or enums.
 - **Alternative:** Keep runtime fields scattered across the environment and pass action dictionaries throughout the code.
 - **Tradeoff:** Each game must define its own small state and action serializers.
-- **Status:** Accepted. The generic core has only an `Action` protocol and does not contain Coup actions.
+- **Status:** Accepted. The generic core has only an abstract `Action` class (`from_answer`, `to_dict`) and does not contain Coup actions.
 
 ## ADR-17 Recording and checkpointing are separate
 
@@ -138,7 +138,7 @@ Lightweight ADR log. Each entry: **Decision / Why / Alternative / Tradeoff / Sta
 - **Why:** Analysis data may omit private state, while safe recovery requires game state, agent state, RNG state, usage, and runner position.
 - **Alternative:** Make the episode log the live runtime state or build a full event-replay system.
 - **Tradeoff:** A checkpoint contains a copy of the partial episode record so a resumed run can continue one coherent output file.
-- **Status:** Accepted. Checkpoints are inspectable JSON written atomically with a temporary file and `os.replace`.
+- **Status:** Superseded by ADR-21.
 
 ## ADR-18 Agent experience is explicit
 
@@ -146,4 +146,36 @@ Lightweight ADR log. Each entry: **Decision / Why / Alternative / Tradeoff / Sta
 - **Why:** Agent experience is not the same thing as true game state, and each player must resume independently even when all players share one inference server.
 - **Alternative:** Treat agents as stateless or serialize the live inference client.
 - **Tradeoff:** Checkpoints contain repeated observation history. They never contain private reasoning or live clients.
-- **Status:** Accepted. The three agents in the real Qwen CARC run had separate serialized `AgentState` values in the final checkpoint.
+- **Status:** Superseded by ADR-21. `AgentState` recorded every observation but nothing read it; each policy now saves exactly its own state.
+
+## ADR-19 Three layers: GameEnv, Policy, ConversationGame
+
+- **Decision:** `GameEnv` owns rules and state. A `Policy` turns one seat's view into an answer and optional talk. `ConversationGame` runs talk, scheduling, retries, the record, and saving. `GameSpec`, `Runner`, `Agent` and `AgentOutput` are removed. Game-specific prompt text is registered by game name in `games/__init__.py`.
+- **Why:** The previous lifecycle was spread across the Runner, the environment, the agents and a Coup-specific script, and no object could rebuild a run (see `report.md`). `GameSpec` bundled an environment factory, an LLM adapter and a baseline policy that only setup code used.
+- **Alternative:** Keep the Runner and add an episode config object beside it.
+- **Tradeoff:** Every framework-level test and the example script were rewritten. Game rules and tests did not change: 300 seeded games give identical histories, talk and winners before and after.
+- **Status:** Accepted (2026-10-03, `plan.md`).
+
+## ADR-20 Talk lives outside the environment
+
+- **Decision:** The environment never sees talk. A `DialoguePhase` says how many `talk_rounds` come before acting. Policies talk through `get_message` and answer through `get_action` with a plain dict. The game's `Action.from_answer` turns the dict into an action; `step` checks legality and returns the reason when it rejects one.
+- **Why:** Rules depend on actions, not words. Keeping talk out of the environment makes every environment smaller and lets talk be studied separately from moves.
+- **Alternative:** Keep `message` as a field of the output that `step` receives.
+- **Tradeoff:** A game whose move is a word (a clue) must model it as an action field. A discussion ends through the players' actions (in the fixture, a forced "done"), not by the environment counting messages.
+- **Status:** Accepted.
+
+## ADR-21 Settings in game_config, pickled state, run folders
+
+- **Decision:** Every environment setting, the seed included, lives in `game_config`. Environments and policies pickle themselves; `GameEnv.load` refuses a save whose `game_config` differs and names the keys. `ConversationGame.save` writes a run folder (`game.json`, `env.pkl`, `record.json`, `policies/`) between steps; `game.json` is written last and holds a hash of every other file. A `Player` is pickled without its model and needs `set_model` after loading.
+- **Why:** The previous checkpoint lost constructor settings on resume, rewrote a growing JSON snapshot after every step, and turned typed actions into dictionaries. Pickling keeps typed state and RNG exactly; the config check and hashes make a wrong or half-written save fail loudly.
+- **Alternative:** Hand-written `to_dict` / `from_dict` for every state class.
+- **Tradeoff:** Pickles are not human-readable, renaming a class breaks old saves, and a pickle must never be loaded from an untrusted source. The record stays JSON for reading.
+- **Status:** Accepted.
+
+## ADR-22 Player replies with thinking and an answer
+
+- **Decision:** The model replies `<thinking>...</thinking><answer>...</answer>`. For a decision the answer is `{"option": <number>}` (a bare number or a game-shaped JSON object is also read); for talk it is the text to say, or empty for silence. Thinking is recorded as a private entry, visible only to its author.
+- **Why:** Separating reasoning from the answer keeps the answer easy to parse and makes reasoning available for analysis without making it public.
+- **Alternative:** Keep the single JSON object with `message` and `action`.
+- **Tradeoff:** Two model calls per decision when talk is allowed (talk, then answer). The new format has not yet been run against a real model.
+- **Status:** Accepted. Tested with `MockBackend` only.

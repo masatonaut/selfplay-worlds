@@ -1,13 +1,21 @@
-"""All games known to the framework. Adding a game = adding one entry here."""
+"""All games known to the framework. Adding a game = adding one entry to each dict."""
 
-from selfplay_worlds.core.env import GameSpec
-from selfplay_worlds.games.coup import SPEC as COUP
+from selfplay_worlds.core.env import GameEnv
+from selfplay_worlds.games.coup import RULES_TEXT as COUP_RULES
+from selfplay_worlds.games.coup import CoupEnv, render_coup
 
-GAMES: dict[str, GameSpec] = {COUP.name: COUP}
+ENVS: dict[str, type[GameEnv]] = {"coup": CoupEnv}
+"""Game name -> environment class."""
+
+RENDERERS = {"coup": render_coup}
+"""Game name -> render(*, observation) -> str, used by Policy.render_observation."""
+
+RULES: dict[str, str] = {"coup": COUP_RULES}
+"""Game name -> plain-language rules, used in a Player's system prompt."""
 
 
-def get_game(name: str) -> GameSpec:
+def get_env_class(name: str) -> type[GameEnv]:
     try:
-        return GAMES[name]
+        return ENVS[name]
     except KeyError:
-        raise KeyError(f"unknown game {name!r}; available: {sorted(GAMES)}") from None
+        raise KeyError(f"unknown game {name!r}; available: {sorted(ENVS)}") from None

@@ -1,40 +1,38 @@
 """Human-readable terminal trace.
 
-Game-agnostic: it prints what the environment made public, plus the interaction
-headers the Runner saw. It never looks at hidden state.
+Game-agnostic: it prints conversation-record entries as they are appended. It
+never prints private thinking or hidden state.
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import Any
 
 
 class TracePrinter:
-    """Pass an instance as ``Runner(on_event=...)``."""
+    """Pass an instance as ``ConversationGame(on_entry=...)``."""
 
-    def __init__(self, *, write: Callable[[str], None] = print) -> None:
+    def __init__(self, *, names: dict[str, str] | None = None, write: Callable[[str], None] = print) -> None:
+        self._names = dict(names or {})
         self._write = write
-        self._names: dict[str, str] = {}
-        self._last_interaction: int | None = None
 
-    def __call__(self, event: dict) -> None:
-        if event.get("kind") == "reset":
-            self._names = dict(event.get("players", {}))
-            self._last_interaction = None
-            for line in event["public_events"]:
-                self._line(line)
+    def __call__(self, entry: dict[str, Any]) -> None:
+        if entry["visibility"] != "public":
             return
-        interaction = event["interaction"]
-        if interaction["id"] != self._last_interaction:
-            self._last_interaction = interaction["id"]
-            if interaction["mode"] == "response_window":
-                who = ", ".join(self._names.get(p, p) for p in interaction["eligible_players"])
-                self._write(f"  [{interaction['phase']}] response window: {who} may respond")
-        if not event["accepted"]:
-            name = self._names.get(event["actor"], event["actor"])
-            self._write(f"    ! {name}: invalid output rejected ({event['error']})")
-        for line in event["public_events"]:
-            self._line(line)
+        kind = entry["kind"]
+        if kind == "event":
+            self._line(entry["content"])
+        elif kind == "message":
+            self._write(f'    {self._name(entry["player_id"])} says: "{entry["content"]}"')
+        elif kind == "phase" and entry["mode"] == "response_window":
+            who = ", ".join(self._name(pid) for pid in entry["eligible"])
+            self._write(f"  [{entry['phase']}] response window: {who} may respond")
+        elif kind == "action" and not entry["accepted"]:
+            self._write(f"    ! {self._name(entry['player_id'])}: invalid answer rejected ({entry['error']})")
+
+    def _name(self, player_id: str | None) -> str:
+        return self._names.get(player_id, player_id or "?")
 
     def _line(self, line: str) -> None:
         if line.startswith("Turn "):

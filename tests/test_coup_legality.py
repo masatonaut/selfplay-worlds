@@ -1,9 +1,9 @@
 """Legal actions, and rejection of invalid outputs."""
 
 import pytest
-from helpers import act, new_game
+from helpers import act, history, new_game
 
-from selfplay_worlds.core.types import AgentOutput
+from selfplay_worlds.games.coup import CoupAction
 
 HANDS = {"p0": ["duke", "captain"], "p1": ["contessa", "assassin"], "p2": ["ambassador", "duke"]}
 
@@ -65,11 +65,11 @@ def test_challenge_windows_offer_pass_or_challenge():
 )
 def test_block_options_follow_the_action_table(action, blocks):
     env = new_game(HANDS, coins={"p0": 3})
-    assert env.step(player_id="p0", output=AgentOutput(action=action)).accepted
-    while env.current_interaction().phase == "challenge_action":
-        act(env, env.current_interaction().eligible_players[0], "pass")
-    assert env.current_interaction().phase == "block_action"
-    blocker = env.current_interaction().eligible_players[0]
+    assert env.step(player_id="p0", action=CoupAction.from_dict(action)).accepted
+    while env.get_dialogue_phase().phase == "challenge_action":
+        act(env, env.get_dialogue_phase().eligible[0], "pass")
+    assert env.get_dialogue_phase().phase == "block_action"
+    blocker = env.get_dialogue_phase().eligible[0]
     assert _dicts(env.legal_actions(player_id=blocker)) == [{"type": "pass"}] + blocks
 
 
@@ -77,7 +77,7 @@ def test_lose_influence_offers_each_distinct_hidden_card():
     env = new_game({"p0": ["duke", "captain"], "p1": ["contessa", "contessa"], "p2": ["ambassador", "duke"]})
     act(env, "p0", "tax")
     act(env, "p1", "challenge")
-    assert env.current_interaction().phase == "lose_influence"
+    assert env.get_dialogue_phase().phase == "lose_influence"
     assert _dicts(env.legal_actions(player_id="p1")) == [{"type": "reveal", "card": "contessa"}]
 
 
@@ -96,30 +96,62 @@ def test_exchange_lists_keeping_the_current_hand_first():
 
 
 @pytest.mark.parametrize(
-    "player_id, output, error",
+    "player_id, action, error",
     [
-        ("p1", AgentOutput(action={"type": "income"}), "may not act"),
-        ("p0", AgentOutput(action={"type": "coup", "target": "p1"}), "illegal action"),
-        ("p0", AgentOutput(action={"type": "steal", "target": "p0"}), "illegal action"),
-        ("p0", AgentOutput(action={"type": "fly"}), "illegal action"),
-        ("p0", AgentOutput(action=None, message="I am thinking."), "no action given"),
-        ("p0", AgentOutput(action="tax"), "no action given"),
+        ("p1", {"type": "income"}, "may not act"),
+        ("p0", {"type": "coup", "target": "p1"}, "illegal action"),
+        ("p0", {"type": "steal", "target": "p0"}, "illegal action"),
     ],
 )
-def test_invalid_outputs_are_rejected_and_change_nothing(player_id, output, error):
+def test_illegal_actions_are_rejected_and_change_nothing(player_id, action, error):
     env = new_game(HANDS)
-    before = (env.full_state(), env.public_history(), env.current_interaction())
-    result = env.step(player_id=player_id, output=output)
+    before = (env.get_state(view="full"), history(env), env.get_dialogue_phase(), env.n_steps)
+    result = env.step(player_id=player_id, action=CoupAction.from_dict(action))
     assert not result.accepted
     assert error in result.error
-    assert (env.full_state(), env.public_history(), env.current_interaction()) == before
+    assert (env.get_state(view="full"), history(env), env.get_dialogue_phase(), env.n_steps) == before
 
 
 def test_rejection_lists_the_legal_actions_as_feedback():
     env = new_game(HANDS)
-    result = env.step(player_id="p0", output=AgentOutput(action={"type": "coup", "target": "p1"}))
+    result = env.step(player_id="p0", action=CoupAction.from_dict({"type": "coup", "target": "p1"}))
     assert "legal actions are" in result.error
     assert "'income'" in result.error
+
+
+@pytest.mark.parametrize(
+    "answer, error",
+    [
+        ({"type": "fly"}, "needs a known 'type'"),
+        ({"type": "tax", "target": "p1"}, "fields must be"),
+        ({}, "no answer could be read"),
+        ({"option": 9}, "option 9 is not between 1 and 6"),
+        ({"option": True}, "option must be a number"),
+        ({"option": 1, "type": "tax"}, "must contain only 'option'"),
+    ],
+)
+def test_unreadable_answers_are_rejected_before_the_environment(answer, error):
+    env = new_game(HANDS)
+    with pytest.raises(ValueError, match=error):
+        CoupAction.from_answer(answer=answer, player_id="p0", observation=env.get_observation(player_id="p0"))
+
+
+def test_option_answers_pick_from_the_observation_menu():
+    env = new_game(HANDS)
+    observation = env.get_observation(player_id="p0")
+    assert observation["options"][2] == {"type": "tax"}
+    action = CoupAction.from_answer(answer={"option": 3}, player_id="p0", observation=observation)
+    assert action == CoupAction.from_dict({"type": "tax"})
+    assert env.step(player_id="p0", action=action).accepted
+
+
+def test_n_steps_counts_accepted_actions_only():
+    env = new_game(HANDS)
+    assert env.n_steps == 0
+    env.step(player_id="p1", action=CoupAction.from_dict({"type": "income"}))
+    assert env.n_steps == 0
+    act(env, "p0", "income")
+    assert env.n_steps == 1
 
 
 def test_keep_order_does_not_matter():
@@ -128,4 +160,4 @@ def test_keep_order_does_not_matter():
     act(env, "p1", "pass")
     act(env, "p2", "pass")
     act(env, "p0", "keep", cards=["captain", "ambassador"])  # unsorted on purpose
-    assert env.current_interaction().phase == "action"
+    assert env.get_dialogue_phase().phase == "action"

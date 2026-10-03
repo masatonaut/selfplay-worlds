@@ -1,4 +1,3 @@
-from selfplay_worlds.episodes.checkpoint import CHECKPOINT_SCHEMA_VERSION, CheckpointStore
-from selfplay_worlds.episodes.log import EpisodeLogger, EpisodeRecorder
+from selfplay_worlds.episodes.trace import TracePrinter
 
-__all__ = ["CHECKPOINT_SCHEMA_VERSION", "CheckpointStore", "EpisodeLogger", "EpisodeRecorder"]
+__all__ = ["TracePrinter"]

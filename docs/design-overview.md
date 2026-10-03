@@ -1,5 +1,7 @@
 # SelfPlayWorlds: Design and Implementation Overview
 
+> **Out of date (2026-10-03).** This page describes the architecture before the GameEnv / Policy / ConversationGame redesign (`Runner`, `Agent`, `GameSpec`, `EpisodeRecorder`, `CheckpointStore` no longer exist). The current design is in [`architecture.md`](architecture.md); what changed and why is in ADR-19 to ADR-22 of [`design-decisions.md`](design-decisions.md).
+
 ## Motivation
 
 SelfPlayWorlds is a reusable runtime for strategic games in which multiple LLM agents play against or alongside one another. The runtime separates game rules, player observations, model inference, scheduling, research records, and recovery so that each part can be tested and replaced independently.

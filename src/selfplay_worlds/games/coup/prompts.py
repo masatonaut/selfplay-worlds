@@ -1,10 +1,8 @@
-"""How Coup is described to an LLM agent. Game-specific text lives here, not in the agent."""
+"""How Coup is described to an LLM policy. Game-specific text lives here, not in the policy."""
 
 from __future__ import annotations
 
 import json
-
-from selfplay_worlds.core.types import action_to_dict
 
 RULES_TEXT = """You are playing Coup, a bluffing card game. The last player with any face-down cards wins.
 
@@ -21,12 +19,12 @@ You may claim a character you do not have (bluff). Any other player may challeng
 If challenged and you really have the card, you reveal it, shuffle it back and draw a new card, and the challenger loses a card.
 If you do not have it, you lose a card and your action or block fails. A successfully challenged action refunds its cost; a blocked action does not.
 When you lose a card, you choose which one to reveal. With no cards left you are out.
-You may also say something to the table. Talk is public and never binding."""
+You may also say something to the table before you decide. Talk is public and never binding."""
 
 HISTORY_WINDOW = 40
 
 
-def render_observation(*, observation: dict, interaction, legal_actions: list) -> str:
+def render_coup(*, observation: dict) -> str:
     lines = [
         f"You are {observation['your_name']} ({observation['you']}).",
         f"Your hidden cards: {', '.join(observation['your_cards']) or 'none'}. Your coins: {observation['your_coins']}.",
@@ -46,7 +44,7 @@ def render_observation(*, observation: dict, interaction, legal_actions: list) -
     lines.append(f"Recent events (last {len(history)}):")
     lines.extend(f"- {h}" for h in history)
     lines.append("")
-    lines.append(f"Current decision [{interaction.phase}]: {interaction.description}")
-    lines.append("Legal actions:")
-    lines.extend(f"{i}. {json.dumps(action_to_dict(action))}" for i, action in enumerate(legal_actions, 1))
+    lines.append(f"Current decision [{observation['phase']}]: {observation['decision']}")
+    lines.append("Options:")
+    lines.extend(f"{i}. {json.dumps(option)}" for i, option in enumerate(observation["options"], 1))
     return "\n".join(lines)

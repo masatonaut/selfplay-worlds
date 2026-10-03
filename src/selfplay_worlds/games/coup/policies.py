@@ -1,14 +1,18 @@
-"""Rule-based Coup policy for deterministic ScriptedAgents.
+"""Rule-based Coup policy.
 
 Its job is to exercise the interesting mechanics (claims, bluffs, challenges,
 blocks, table talk) so the demo and tests show the framework working. It is not
-meant to be a strong player. All randomness comes from the seeded ``rng``.
+meant to be a strong player. All randomness comes from the policy's seeded RNG.
+
+Talk and action are decided together: ``get_message`` makes the decision and
+remembers it, and ``step`` plays the remembered answer for the same decision.
 """
 
 from __future__ import annotations
 
-from selfplay_worlds.core.types import AgentOutput
-from selfplay_worlds.games.coup.actions import CoupAction, CoupActionType
+from typing import Any
+
+from selfplay_worlds.policies.scripted import ScriptedPolicy
 
 KEEP_PRIORITY = ["duke", "assassin", "captain", "contessa", "ambassador"]  # most valuable first
 BLUFF_RATE = 0.25
@@ -22,34 +26,53 @@ CLAIM_LINES = {
     "exchange": "Let me see what the Court has.",
 }
 
-
-def heuristic_policy(*, observation: dict, interaction, legal_actions: list[CoupAction], rng) -> AgentOutput:
-    phase = interaction.phase
-    if phase == "action":
-        return _choose_action(observation, legal_actions, rng)
-    if phase in ("challenge_action", "challenge_block"):
-        return _maybe_challenge(observation, interaction.phase, rng)
-    if phase == "block_action":
-        return _maybe_block(observation, legal_actions, rng)
-    if phase == "lose_influence":
-        return AgentOutput(action=_least_valuable_reveal(legal_actions))
-    if phase == "exchange":
-        return AgentOutput(action=_best_keep(legal_actions))
-    return AgentOutput(action=legal_actions[0])
+Decision = tuple[dict[str, Any], str | None]
+"""(answer, message)"""
 
 
-def _choose_action(obs: dict, legal: list[CoupAction], rng) -> AgentOutput:
+class CoupHeuristicPolicy(ScriptedPolicy):
+    def __init__(self, *, seed: int = 0) -> None:
+        super().__init__(game_name="coup", seed=seed)
+        self._planned: tuple[int, dict[str, Any]] | None = None
+
+    def get_message(self, *, observation, conversation):
+        answer, message = self._decide(observation)
+        self._planned = (observation["decision_id"], answer)
+        return message
+
+    def step(self, *, observation, conversation):
+        planned, self._planned = self._planned, None
+        if planned is not None and planned[0] == observation["decision_id"] and "feedback" not in observation:
+            return planned[1]
+        return self._decide(observation)[0]
+
+    def _decide(self, obs: dict[str, Any]) -> Decision:
+        phase, options = obs["phase"], obs["options"]
+        if phase == "action":
+            return _choose_action(obs, options, self.rng)
+        if phase in ("challenge_action", "challenge_block"):
+            return _maybe_challenge(obs, phase, self.rng)
+        if phase == "block_action":
+            return _maybe_block(obs, options, self.rng)
+        if phase == "lose_influence":
+            return _least_valuable_reveal(options), None
+        if phase == "exchange":
+            return _best_keep(options), None
+        return {"option": 1}, None
+
+
+def _choose_action(obs: dict, options: list[dict], rng) -> Decision:
     mine = set(obs["your_cards"])
     coins = obs["your_coins"]
     opponents = [p for p in obs["players"] if p["alive"] and p["id"] != obs["you"]]
     strongest = max(opponents, key=lambda p: (p["hidden_card_count"], p["coins"]))["id"]
     richest = max(opponents, key=lambda p: p["coins"])
-    available = {action.type.value for action in legal}
+    available = {option["type"] for option in options}
 
-    def act(kind: str, target: str | None = None) -> AgentOutput:
-        action = CoupAction(CoupActionType(kind), target=target)
+    def act(kind: str, target: str | None = None) -> Decision:
+        answer = {"type": kind} if target is None else {"type": kind, "target": target}
         line = CLAIM_LINES.get(kind) if rng.random() < TALK_RATE else None
-        return AgentOutput(action=action, message=line)
+        return answer, line
 
     if "coup" in available and coins >= 7:
         return act("coup", strongest)
@@ -70,45 +93,36 @@ def _choose_action(obs: dict, legal: list[CoupAction], rng) -> AgentOutput:
     return act("foreign_aid") if rng.random() < 0.5 else act("income")
 
 
-def _maybe_challenge(obs: dict, phase: str, rng) -> AgentOutput:
+def _maybe_challenge(obs: dict, phase: str, rng) -> Decision:
     pending = obs["pending_action"]
     claim = pending["block_claim"] if phase == "challenge_block" else pending["claim"]
     seen = obs["your_cards"].count(claim) + sum(p["revealed_cards"].count(claim) for p in obs["players"])
     if seen >= 3:
-        return AgentOutput(action=CoupAction(CoupActionType.CHALLENGE), message="All three of those are already accounted for.")
-    my_cards = len(obs["your_cards"])
-    if my_cards == 1:
-        return AgentOutput(action=CoupAction(CoupActionType.PASS))  # too risky without certainty
+        return {"type": "challenge"}, "All three of those are already accounted for."
+    if len(obs["your_cards"]) == 1:
+        return {"type": "pass"}, None  # too risky without certainty
     targeted = pending["target"] == obs["you"] and phase == "challenge_action"
     rate = CHALLENGE_RATE * (2 if targeted else 1)
     if rng.random() < rate:
         message = "I don't believe you." if rng.random() < TALK_RATE else None
-        return AgentOutput(action=CoupAction(CoupActionType.CHALLENGE), message=message)
-    return AgentOutput(action=CoupAction(CoupActionType.PASS))
+        return {"type": "challenge"}, message
+    return {"type": "pass"}, None
 
 
-def _maybe_block(obs: dict, legal: list[CoupAction], rng) -> AgentOutput:
+def _maybe_block(obs: dict, options: list[dict], rng) -> Decision:
     mine = set(obs["your_cards"])
-    for action in legal:
-        if action.type is CoupActionType.BLOCK and action.claim.value in mine:
-            return AgentOutput(action=action)
-    pending = obs["pending_action"]
-    if pending["action"] == "assassinate" and len(obs["your_cards"]) == 1 and rng.random() < 0.5:
-        action = next(
-            item
-            for item in legal
-            if item.type is CoupActionType.BLOCK and item.claim.value == "contessa"
-        )
-        return AgentOutput(action=action, message="I have the Contessa.")
-    return AgentOutput(action=CoupAction(CoupActionType.PASS))
+    for option in options:
+        if option["type"] == "block" and option["claim"] in mine:
+            return option, None
+    if obs["pending_action"]["action"] == "assassinate" and len(obs["your_cards"]) == 1 and rng.random() < 0.5:
+        contessa = next(o for o in options if o["type"] == "block" and o["claim"] == "contessa")
+        return contessa, "I have the Contessa."
+    return {"type": "pass"}, None
 
 
-def _least_valuable_reveal(legal: list[CoupAction]) -> CoupAction:
-    return max(legal, key=lambda action: KEEP_PRIORITY.index(action.card.value))
+def _least_valuable_reveal(options: list[dict]) -> dict:
+    return max(options, key=lambda option: KEEP_PRIORITY.index(option["card"]))
 
 
-def _best_keep(legal: list[CoupAction]) -> CoupAction:
-    return min(
-        legal,
-        key=lambda action: sum(KEEP_PRIORITY.index(card.value) for card in action.cards),
-    )
+def _best_keep(options: list[dict]) -> dict:
+    return min(options, key=lambda option: sum(KEEP_PRIORITY.index(card) for card in option["cards"]))

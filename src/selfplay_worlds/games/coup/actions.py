@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
 
+from selfplay_worlds.core.env import Action
 from selfplay_worlds.games.coup.cards import Card
 
 
@@ -26,7 +27,7 @@ class CoupActionType(StrEnum):
 
 
 @dataclass(frozen=True)
-class CoupAction:
+class CoupAction(Action):
     """One structurally valid Coup action.
 
     Game legality still belongs to :class:`CoupEnv`.
@@ -85,6 +86,27 @@ class CoupAction:
         if "cards" in expected and not cards:
             raise ValueError("cards must not be empty")
         return cls(type=action_type, target=target, claim=claim, card=card, cards=cards)
+
+    @classmethod
+    def from_answer(cls, *, answer: Mapping[str, Any], player_id: str, observation: dict) -> CoupAction:
+        """``{"option": n}`` picks from ``observation["options"]``; any other answer is read as a
+        Coup action dict such as ``{"type": "steal", "target": "p1"}``."""
+        if not isinstance(answer, Mapping):
+            raise TypeError("an answer must be a JSON object")
+        if not answer:
+            raise ValueError("no answer could be read from the reply")
+        if "option" not in answer:
+            return cls.from_dict(answer)
+        if set(answer) != {"option"}:
+            raise ValueError("an option answer must contain only 'option'")
+        options = observation.get("options") or []
+        choice = answer["option"]
+        if isinstance(choice, bool) or not isinstance(choice, int):
+            raise ValueError(f"option must be a number, not {choice!r}")
+        if not 1 <= choice <= len(options):
+            raise ValueError(f"option {choice} is not between 1 and {len(options)}")
+        return cls.from_dict(options[choice - 1])
+
 
 def coup_action(action_type: CoupActionType | str, **fields: Any) -> CoupAction:
     return CoupAction.from_dict({"type": str(action_type), **fields})

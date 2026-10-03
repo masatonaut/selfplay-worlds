@@ -29,11 +29,12 @@ uv run python examples/run_coup.py    # deterministic demo (seed 0)
 
 ## Architecture rules
 
-- The environment is the source of truth. It never calls a model and never decides who is asked first.
-- The Runner contains no game rules. It schedules by `Interaction.mode` only.
-- Agents receive `observe(player)`, never `full_state()`. Any new observation needs a test that it hides what it should.
-- Keep `message` and `action` separate in `AgentOutput`.
-- `mode` is generic (`SINGLE`, `RESPONSE_WINDOW`, `DISCUSSION`, `SIMULTANEOUS`); `phase` is game-specific.
+- The environment is the source of truth. It never calls a model, never sees talk, and never decides who is asked first.
+- Every game setting, the seed included, lives in `game_config`. Environments read settings only from it.
+- `ConversationGame` contains no game rules. It schedules by `DialoguePhase.mode` only.
+- Policies receive `get_observation(player_id=...)` and the conversation they may see, never `get_state(view="full")`. Any new observation needs a test that it hides what it should.
+- Talk (`get_message`) and answers (`get_action`) are separate calls. Policies return plain answer dicts; only the game's `Action.from_answer` builds actions.
+- `mode` is generic (`ACTION`, `RESPONSE_WINDOW`, `DISCUSSION`, `SIMULTANEOUS`); `phase` is game-specific.
 - Code in `tests/fixtures/` is test-only. Never describe it as an implemented game.
 - Do not invent game rules. Verify them against a published rulebook and record sources and interpretations, as in `docs/coup-rules.md`.
 

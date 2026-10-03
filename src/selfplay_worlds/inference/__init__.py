@@ -1,4 +1,4 @@
-"""Optional model inference. The deterministic framework never imports this package."""
+"""Model inference. Only the LLM-backed Player uses it; no backend makes a network call on import."""
 
 from selfplay_worlds.inference.base import (
     GEMMA_4_GENERATION_CONFIG,

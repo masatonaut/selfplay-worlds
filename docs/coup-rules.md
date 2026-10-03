@@ -88,7 +88,7 @@ Every lost challenge, Coup and assassination inserts a `lose_influence` phase be
 Rules for response windows:
 - A `pass` removes only that player from the window. The window closes when everyone has passed.
 - The first `challenge` or `block` closes the window at once. Nobody else is asked.
-- **Who is asked first is decided by the Runner**, not by the game. The default asks in the environment's order (clockwise from the actor). Changing the order changes who gets to challenge first (tested in `tests/test_runner.py`).
+- **Who is asked first is decided by `ConversationGame`'s Scheduler**, not by the game. The default asks in the environment's order (clockwise from the actor). Changing the order changes who gets to challenge first (tested in `tests/test_conversation_game.py`).
 
 ## Interpretation (not stated in the rulebook, chosen by us)
 
@@ -101,7 +101,7 @@ Rules for response windows:
 - The Treasury is treated as unlimited. The box has 50 coins, which normal play does not exhaust.
 - The starting player is chosen by the seed. The rulebook says the winner of the previous game starts.
 - The optional 2-player setup variant (card drafting) is not implemented. The basic 2-player rule (the starting player gets 1 coin) is.
-- When a player has exactly one legal action (for example revealing their last card), the Runner applies it without asking the agent. It is logged with `"auto": true`.
+- When a player has exactly one legal action (for example revealing their last card), `ConversationGame` applies it without asking the policy, and the player is not asked to talk. It is recorded with `"source": "forced"`.
 - **Turn limit (not a rule).** A game that reaches 100 turns (`max_turns`) ends without a winner, with `termination_reason: "turn_limit"` and payoff 0 for everyone. Real Coup has no limit, but agents can repeat moves forever: two players whose only card is a Captain can steal from each other and block with the Captain indefinitely. In 2,000 scripted and random test games the longest game took 78 turns, so the limit only matters for looping agents.
 
 ## Where each rule is tested
