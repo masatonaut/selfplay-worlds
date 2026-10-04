@@ -1,7 +1,7 @@
 """Human-readable terminal trace.
 
-Game-agnostic: it prints conversation-record entries as they are appended. It
-never prints private thinking or hidden state.
+Game-agnostic: it prints conversation-record entries as they are appended. The
+record holds only what happened at the table, never hidden state or private reasoning.
 """
 
 from __future__ import annotations
@@ -18,8 +18,6 @@ class TracePrinter:
         self._write = write
 
     def __call__(self, entry: dict[str, Any]) -> None:
-        if entry["visibility"] != "public":
-            return
         kind = entry["kind"]
         if kind == "event":
             self._line(entry["content"])

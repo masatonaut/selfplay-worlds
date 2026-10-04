@@ -44,7 +44,7 @@ flowchart TD
 - **DialoguePhase** says what is happening now: `phase` (game rule), `mode` (`ACTION`, `RESPONSE_WINDOW`, `DISCUSSION`, `SIMULTANEOUS`), who **may** act, and how many talk rounds come first.
 - **ConversationGame** runs each phase: talk, answers, building the game's `Action` from each answer, retries with the reason, fallbacks. It keeps the **ConversationRecord** and saves or loads a whole game. It contains no game rules.
 - **Scheduler** decides who is **asked first**. The default is the environment's order.
-- **Policy** sees only its own observation and the conversation it may see. **ScriptedPolicy** plays seeded rules; **Player** asks a model and parses `<thinking>` and `<answer>`. Policies save themselves; a Player is saved without its model.
+- **Policy** sees only its own observation and the conversation it may see. **ScriptedPolicy** plays seeded rules; **Player** asks a model, parses `<thinking>` and `<answer>`, and keeps its own thoughts: a full history plus a word-limited thoughtpad (the only memory shown in later prompts), summarized by the model when it gets too long. Policies save themselves; a Player is saved without its model.
 
 Details: [`docs/architecture.md`](docs/architecture.md).
 

@@ -44,11 +44,10 @@ def test_trace_reports_rejected_answers():
     assert any(line.startswith("    ! Alice: invalid answer rejected (could not read the answer") for line in lines)
 
 
-def test_trace_never_prints_private_thinking_or_opening_hands():
+def test_trace_never_prints_the_opening_hands():
     lines = []
     printer = TracePrinter(write=lines.append)
-    printer({"kind": "thinking", "visibility": "private", "player_id": "p0", "content": "I hold two Dukes."})
     env = new_game({"p0": ["duke", "duke"], "p1": ["duke", "captain"], "p2": ["contessa", "contessa"]})
     for text in env.get_state()["history"]:
-        printer({"kind": "event", "visibility": "public", "player_id": None, "content": text})
+        printer({"kind": "event", "player_id": None, "content": text})
     assert not any("duke" in line.lower() or "contessa" in line.lower() for line in lines)

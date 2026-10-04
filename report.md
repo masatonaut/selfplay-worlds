@@ -15,8 +15,8 @@ The review below describes the code at `fc2b69d`. Following it, the framework wa
 | Layer | Job |
 |---|---|
 | `GameEnv` | Rules and state only. Every setting (seed included) lives in `game_config`. It never sees talk. `get_state()` always reports `done` and `rewards`. |
-| `Policy` | Turns what one seat sees into a plain answer (`{"option": 3}`) and optional talk. `ScriptedPolicy` plays seeded rules; `Player` asks a model and reads `<thinking>` / `<answer>`. |
-| `ConversationGame` | Runs each phase: talk first, then answers, which it turns into the game's `Action`. Handles retries (with the rejection reason), fallbacks and forced moves. Keeps one `ConversationRecord` of everything, with thinking kept private. |
+| `Policy` | Turns what one seat sees into a plain answer (`{"option": 3}`) and optional talk. `ScriptedPolicy` plays seeded rules; `Player` asks a model, reads `<thinking>` / `<answer>`, and keeps its own thought history plus a word-limited thoughtpad that it summarizes when full. |
+| `ConversationGame` | Runs each phase: talk first, then answers, which it turns into the game's `Action`. Handles retries (with the rejection reason), fallbacks and forced moves. Keeps one `ConversationRecord` of what happened at the table; it never handles private reasoning. |
 
 **Saving is simple and safe.** Each piece saves itself: the env and policies as pickles (a `Player` without its model, re-attached with `set_model`), the record as JSON, all in one run folder written after every step. Loading refuses a different `game_config` and detects a half-written save.
 

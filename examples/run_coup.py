@@ -59,11 +59,13 @@ def build_backend(*, backend: str, model: str | None, seed: int):
 
 
 def mock_model(seed):
-    """Stands in for a model offline: stays silent and picks a numbered option at random."""
+    """Stands in for a model offline: stays silent, keeps short notes, and picks a numbered option at random."""
     rng = random.Random(seed)
 
     def respond(messages):
         prompt = messages[-1]["content"]
+        if "Rewrite your notes" in prompt:
+            return "<answer>Nothing certain yet; I have been choosing at random.</answer>"
         if "moment to talk" in prompt:
             return "<thinking>Nothing to say.</thinking><answer></answer>"
         options = re.findall(r"^\d+\. ", prompt, flags=re.MULTILINE)

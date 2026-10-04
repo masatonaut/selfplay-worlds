@@ -38,10 +38,10 @@ The environment exposes the open decision point as a `DialoguePhase`. Conversati
 | **DialoguePhase** | `core/env.py` | The open decision point: `phase_id`, `phase`, `mode`, `eligible`, `talk_rounds`, `description` |
 | **Scheduler** | `core/scheduler.py` | Orders the eligible players of a phase |
 | **ConversationGame** | `core/conversation.py` | Runs phases, talk, answers, retries and fallbacks; saves and loads a game |
-| **ConversationRecord** | `core/conversation.py` | Every phase, message, private thinking, action attempt and public event, in order |
+| **ConversationRecord** | `core/conversation.py` | Every phase, message, action attempt and public event, in order. No private reasoning |
 | **Policy** | `policies/base.py` | Abstract `get_action`; optional `get_message`; `render_observation` by game name; pickle `save` / `load` |
 | **ScriptedPolicy** | `policies/scripted.py` | Seeded rule-based play (`step`). `RandomPolicy`, `FirstOptionPolicy`, `ReplayPolicy` |
-| **Player** | `policies/player.py` | LLM-backed policy: prompt, generate, parse thinking and answer. Pickled without its model |
+| **Player** | `policies/player.py` | LLM-backed policy: prompt, generate, parse thinking and answer. Keeps its own `thoughts` history and a word-limited `thoughtpad`. Pickled without its model |
 | **InferenceBackend** | `inference/` | Sends chat messages to a model, returns text and token counts |
 | **CoupEnv** | `games/coup/env.py` | Coup rules on one `CoupState` (RNG included) |
 | **CoupHeuristicPolicy** | `games/coup/policies.py` | Rule-based Coup play for demos and tests |
@@ -159,7 +159,7 @@ answer:  {"type": "tax"}  or  {"option": 3}        <- get_action, turned into Co
 
 - The environment never sees talk. Talk is recorded by ConversationGame and shown to other policies through `get_conversation`.
 - In Coup the claim is the action (`tax` claims the Duke), so a lie is visible by comparing the claim with the hidden cards in the full state. Saying "I have the Duke" is not a claim.
-- A `Player`'s private thinking is recorded as a `thinking` entry visible only to that player.
+- A `Player`'s thinking never reaches ConversationGame or the record. The Player keeps it (see Inference).
 
 ## Observation vs full state
 
@@ -177,8 +177,8 @@ Tests check this two ways: the observation contains none of the god-view keys, a
 `ConversationRecord` is one ordered list of entries, for every mode:
 
 ```json
-{"index": 12, "kind": "phase | message | thinking | action | event",
- "player_id": "p2", "content": "...", "visibility": "public | private",
+{"index": 12, "kind": "phase | message | action | event",
+ "player_id": "p2", "content": "...",
  "n_steps": 7, "phase_id": 5, "phase": "challenge_action", "mode": "response_window",
  "answer": {"option": 2}, "source": "policy | forced | fallback", "attempt": 1, "accepted": true, "error": null}
 ```
@@ -194,6 +194,7 @@ The last five fields appear on `action` entries only.
   env.pkl             GameEnv.save: the whole environment, RNG included
   record.json         the conversation record
   policies/<pid>.pkl  Policy.save; a Player is saved without its model
+  policies/<pid>.thoughts.json  a Player's thoughtpad and full thought history, readable (not needed to resume)
 ```
 
 Saving happens only between steps, so there is never a half-finished phase to persist. On load:
@@ -214,7 +215,17 @@ Resume rebuilds the environment from `game.json`'s `game_config`, so no setting 
 | `OpenRouterBackend` | OpenRouter's servers | `uv sync --extra llm`, `OPENROUTER_API_KEY` |
 | `VLLMBackend` | a vLLM server you started (for example on a CARC GPU node) | `uv sync --extra llm`, `VLLM_BASE_URL` |
 
-`Player` builds its prompt from the registered rules text and renderer for its game. The model replies `<thinking>...</thinking><answer>...</answer>`. For a decision the answer is `{"option": <number>}` (a bare number or a game-shaped JSON object is also read); for talk it is the text to say, or empty to stay silent. The Player turns the answer into a dict; the game's `from_answer` turns the dict into an action and rejects anything it cannot read. Every prompt and reply is kept in `Player.transcript`.
+`Player` builds its prompt from the registered rules text and renderer for its game. The model replies `<thinking>...</thinking><answer>...</answer>`. For a decision the answer is `{"option": <number>}` (a bare number or a game-shaped JSON object is also read); for talk it is the text to say, or empty to stay silent. The Player turns the answer into a dict; the game's `from_answer` turns the dict into an action and rejects anything it cannot read.
+
+A Player keeps its thinking to itself, in two places:
+
+| | `thoughts` | `thoughtpad` |
+|---|---|---|
+| What | every model call, keyed 0, 1, 2, ...: `kind` (`talk`, `action`, `summary`), `step`, `phase`, `feedback`, prompt, raw reply, thinking, answer, token usage | a running text of past thinking, one `[step N, phase] ...` line per thought |
+| Size | never trimmed | at most `thoughtpad_max_words` (default 400) |
+| Shown to the model | never | in every later prompt, as "Your private notes so far" |
+
+When an appended thought pushes the thoughtpad over the limit, the Player makes one extra model call asking it to rewrite the notes, keeping only what matters for the rest of the game, in at most half the limit. The summary call is stored in `thoughts` with the pad before and after. A summary that is still too long is cut to its newest words, and if the budget is spent the newest notes are kept without a call, so the decision in progress still goes through. `ConversationGame` adds `"step"` (accepted actions so far) to every observation so thoughts can be placed in time.
 
 ## Extension points: adding a game
 
@@ -229,7 +240,8 @@ No ConversationGame, policy, record or inference change is needed for a game tha
 ## Known limitations
 
 - Only Coup is a real game. `DISCUSSION` and `SIMULTANEOUS` are exercised by a test fixture only.
-- Messages are public; only `Player` thinking is private. There are no private or team channels yet.
+- Messages are public. There are no private or team channels yet.
+- A `Player`'s `thoughts` history is re-pickled on every save, so save time grows with long LLM games.
 - The current `Player` prompt format has not been validated with a real model.
 - ConversationGame is sequential and synchronous. There is no batching, no parallel episodes, and no multi-game runner yet.
 - Scripted policies test the machinery, not strategy.

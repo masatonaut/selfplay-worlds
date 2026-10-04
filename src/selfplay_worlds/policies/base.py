@@ -15,8 +15,6 @@ class Policy(ABC):
         if not game_name:
             raise ValueError("a policy needs the name of the game it plays")
         self.game_name = game_name
-        self.last_thinking: str | None = None
-        """Private reasoning from the latest call, if any. ConversationGame records it and clears it."""
 
     def render_observation(self, *, observation: dict[str, Any]) -> str:
         """The game's renderer if one is registered for ``game_name``, otherwise pretty JSON."""
@@ -31,8 +29,9 @@ class Policy(ABC):
     def get_action(self, *, observation: dict[str, Any], conversation: list[dict[str, Any]]) -> dict[str, Any]:
         """Return an answer, for example ``{"option": 3}``.
 
-        If ``observation`` has a ``"feedback"`` key, the previous answer was
-        rejected and the value says why.
+        ConversationGame adds ``"step"`` (accepted actions so far) to every observation.
+        If ``observation`` has a ``"feedback"`` key, the previous answer was rejected and
+        the value says why. Any private reasoning is the policy's own to keep.
         """
 
     def get_message(self, *, observation: dict[str, Any], conversation: list[dict[str, Any]]) -> str | None:

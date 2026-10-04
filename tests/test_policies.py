@@ -21,13 +21,23 @@ DECIDE_1 = '<thinking>Safe play.</thinking><answer>{"option": 1}</answer>'
 SILENT = "<thinking>Nothing to add.</thinking><answer></answer>"
 
 
-def replies(*, decide=DECIDE_1, talk=SILENT):
-    """One reply for talk prompts, another for decisions."""
-    return lambda messages: talk if "moment to talk" in messages[-1]["content"] else decide
+SUMMARY = "<answer>Short notes.</answer>"
 
 
-def mock_model(*, decide=DECIDE_1, talk=SILENT):
-    return MockBackend(respond=replies(decide=decide, talk=talk))
+def replies(*, decide=DECIDE_1, talk=SILENT, summary=SUMMARY):
+    """One reply for summary prompts, one for talk prompts, another for decisions."""
+
+    def respond(messages):
+        prompt = messages[-1]["content"]
+        if "Rewrite your notes" in prompt:
+            return summary
+        return talk if "moment to talk" in prompt else decide
+
+    return respond
+
+
+def mock_model(*, decide=DECIDE_1, talk=SILENT, summary=SUMMARY):
+    return MockBackend(respond=replies(decide=decide, talk=talk, summary=summary))
 
 
 def _player(model=None, **kwargs):
@@ -164,9 +174,10 @@ def test_full_game_with_players_on_a_mock_backend():
     game = _llm_game({pid: mock_model() for pid in ("p0", "p1", "p2")})
     final = game.run()
     assert final["done"] and len(final["winners"]) == 1
-    thinking = [e for e in game.record.entries if e["kind"] == "thinking"]
-    assert thinking and all(e["visibility"] == "private" for e in thinking)
-    assert game.players["p0"].usage.model_calls == len(game.players["p0"].transcript) > 0
+    p0 = game.players["p0"]
+    assert p0.usage.model_calls == len(p0.thoughts) > 0  # one entry per model call
+    assert "Safe play." in p0.thoughtpad
+    assert not any("Safe play." in json.dumps(e) for e in game.record.entries)  # thinking never reaches the record
 
 
 def test_unreadable_reply_is_retried_with_an_explanation():
@@ -187,16 +198,90 @@ def test_player_saves_without_its_model_and_needs_set_model(tmp_path):
     env = new_game(HANDS)
     player.get_action(observation=env.get_observation(player_id="p0"), conversation=[])
     path = player.save(path=tmp_path / "player.pkl")  # the mock holds a lambda, which cannot be pickled
+    readable = json.loads((tmp_path / "player.thoughts.json").read_text(encoding="utf-8"))
+    assert readable["thoughtpad"] == player.thoughtpad and readable["thoughts"]["0"]["thinking"] == "Safe play."
 
     restored = Player(game_name="coup", model=None)
     restored.load(path=path)
     assert restored.model is None
-    assert restored.transcript == player.transcript and restored.usage.model_calls == 1
+    assert restored.thoughts == player.thoughts and restored.thoughtpad == player.thoughtpad
+    assert restored.usage.model_calls == 1
     assert restored.describe()["backend"] == "mock"
     with pytest.raises(RuntimeError, match="set_model"):
         restored.get_action(observation=env.get_observation(player_id="p0"), conversation=[])
     restored.set_model(model=mock_model())
     assert restored.get_action(observation=env.get_observation(player_id="p0"), conversation=[]) == {"option": 1}
+
+
+# --------------------------------------------------------------- the thoughtpad
+
+
+def _observation(step=3):
+    return {**new_game(HANDS).get_observation(player_id="p0"), "step": step}
+
+
+def test_every_call_is_kept_and_thinking_is_appended_to_the_thoughtpad():
+    player = _player(mock_model(talk="<thinking>Bob looks nervous.</thinking><answer>Hi.</answer>"))
+    player.get_message(observation=_observation(step=3), conversation=[])
+    player.get_action(observation=_observation(step=3), conversation=[])
+    assert [t["kind"] for t in player.thoughts.values()] == ["talk", "action"]
+    first = player.thoughts[0]
+    assert (first["step"], first["phase"], first["thinking"], first["answer"]) == (3, "action", "Bob looks nervous.", "Hi.")
+    assert first["reply"].startswith("<thinking>") and "Players:" in first["prompt"] and first["model"] == "mock"
+    assert player.thoughtpad == "[step 3, action] Bob looks nervous.\n[step 3, action] Safe play."
+
+
+def test_a_reply_without_thinking_is_kept_but_adds_nothing_to_the_thoughtpad():
+    player = _player(mock_model(decide='<answer>{"option": 1}</answer>'))
+    player.get_action(observation=_observation(), conversation=[])
+    assert len(player.thoughts) == 1 and player.thoughts[0]["thinking"] is None
+    assert player.thoughtpad == ""
+
+
+def test_only_the_thoughtpad_reaches_later_prompts():
+    model = mock_model(decide="<thinking>Carol bluffed about the Duke.</thinking><answer>1</answer>")
+    player = _player(model)
+    player.get_action(observation=_observation(step=1), conversation=[])
+    player.thoughts[0]["thinking"] = "SECRET-ONLY-IN-HISTORY"  # history is never shown to the model
+    player.get_action(observation=_observation(step=2), conversation=[{"kind": "message", "player_id": "p1", "content": "Hm."}])
+    second_prompt = model.calls[1][1]["content"]
+    assert "Your private notes so far:\n[step 1, action] Carol bluffed about the Duke." in second_prompt
+    assert "SECRET-ONLY-IN-HISTORY" not in second_prompt
+    assert "- p1 says: Hm." in second_prompt
+
+
+def test_a_full_thoughtpad_is_summarized_and_the_full_history_kept():
+    model = mock_model(decide="<thinking>one two three four five six</thinking><answer>1</answer>", summary="<answer>Keep watching Carol.</answer>")
+    player = _player(model, thoughtpad_max_words=20)
+    for step in range(3):  # each entry is 9 words ("[step N, action]" + 6): the third pushes the pad over 20
+        player.get_action(observation=_observation(step=step), conversation=[])
+    kinds = [t["kind"] for t in player.thoughts.values()]
+    assert kinds == ["action", "action", "action", "summary"]
+    summary = player.thoughts[3]
+    assert summary["thoughtpad_before"].count("one two three") == 3
+    assert summary["thoughtpad_after"] == player.thoughtpad == "Keep watching Carol."
+    assert "Rewrite your notes" in summary["prompt"] and "at most 10 words" in summary["prompt"]
+    assert "one two three four five six" in model.calls[3][1]["content"]  # the summary call saw the old notes
+    assert player.usage.model_calls == 4  # the summary call counts toward the budget
+
+
+def test_a_summary_that_ignores_the_limit_is_cut_to_the_newest_words():
+    long_summary = "<answer>" + " ".join(f"w{i}" for i in range(50)) + "</answer>"
+    player = _player(mock_model(decide="<thinking>a b c d e f g h</thinking><answer>1</answer>", summary=long_summary), thoughtpad_max_words=10)
+    player.get_action(observation=_observation(), conversation=[])
+    assert len(player.thoughtpad.split()) == 10
+    assert player.thoughtpad.startswith("...") and player.thoughtpad.endswith("w49")
+
+
+def test_out_of_budget_summary_keeps_the_newest_notes_instead():
+    player = _player(
+        mock_model(decide="<thinking>a b c d e f g h</thinking><answer>1</answer>"),
+        thoughtpad_max_words=10,
+        usage_limits=UsageLimits(max_calls=1),
+    )
+    assert player.get_action(observation=_observation(), conversation=[]) == {"option": 1}  # the decision still goes through
+    assert player.thoughts[1]["kind"] == "summary" and player.thoughts[1]["reply"] == ""
+    assert len(player.thoughtpad.split()) <= 5
 
 
 def test_player_budget_stops_before_the_next_call():

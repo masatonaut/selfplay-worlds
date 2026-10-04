@@ -1,6 +1,6 @@
 # Redesign plan: GameEnv, Policy, ConversationGame
 
-Status: plan only, nothing built yet. It is based on `report.md` and the design discussion that followed it. All open questions have been answered (section 9).
+Status: built (see `report.md` section 0). One later change: thinking no longer goes through ConversationGame or the record; each Player keeps it (ADR-23 in `docs/design-decisions.md`). It is based on `report.md` and the design discussion that followed it. All open questions have been answered (section 9).
 
 ---
 

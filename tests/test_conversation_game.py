@@ -131,19 +131,23 @@ def test_phases_without_talk_rounds_never_ask_for_talk():
     assert "lose_influence" not in [c["phase"] for c in players["p0"].talk_calls]
 
 
-def test_thinking_is_recorded_but_private():
-    class Thinker(Recorder):
+def test_the_record_holds_only_the_table_and_policies_see_the_step():
+    class StepSpy(Recorder):
         def step(self, *, observation, conversation):
-            self.last_thinking = "I have no Duke. Bluff."
+            self.steps.append((observation["step"], self.env_steps()))
             return super().step(observation=observation, conversation=conversation)
 
-    players = {**_recorders(), "p0": Thinker(answers=[{"type": "tax"}])}
-    game = _play(_fixed_env(), players)
-    thinking = next(e for e in game.record.entries if e["kind"] == "thinking")
-    assert thinking["visibility"] == "private" and thinking["player_id"] == "p0"
-    assert thinking["content"] in [e["content"] for e in game.get_conversation(player_id="p0")]
-    assert thinking["content"] not in [e["content"] for e in game.get_conversation(player_id="p1")]
-    assert players["p0"].last_thinking is None  # consumed by the game
+    env = _fixed_env()
+    players = {pid: StepSpy() for pid in ("p0", "p1", "p2")}
+    for policy in players.values():
+        policy.steps, policy.env_steps = [], lambda: env.n_steps
+    players["p0"].messages = ["Duke, obviously."]
+    game = _play(env, players)
+    assert {e["kind"] for e in game.record.entries} <= {"phase", "message", "action", "event"}
+    assert all(set(e) >= {"kind", "player_id", "content"} and "visibility" not in e for e in game.record.entries)
+    assert [e["kind"] for e in game.get_conversation(player_id="p1")] == ["message"]
+    seen = [s for policy in players.values() for s in policy.steps]
+    assert seen and all(step == current for step, current in seen)  # observation["step"] == env.n_steps
 
 
 # ----------------------------------------------------- invalid answers and fallbacks

@@ -36,7 +36,7 @@ _Last updated: 2026-10-03._
 ## KNOWN LIMITATIONS
 - Only Coup is a real game. `DISCUSSION` and `SIMULTANEOUS` run only in a test fixture.
 - vLLM on CARC was validated with Qwen2.5-7B-Instruct on the earlier prompt format. The current `Player` prompt has not been run against a real model. Gemma 4 31B is still pending, and OpenRouter has not been validated with a real call.
-- Messages are public and only `Player` thinking is private; there are no team channels.
+- Messages are public; there are no private or team channels. A `Player` keeps its thinking to itself (ADR-23).
 - In Coup, talk is one round before each decision (no free chat), a claimant always reveals a card they hold, and a game ends without a winner after 100 turns (safety net, not a rule).
 - ConversationGame is sequential; no batching, parallel episodes or multi-game runner yet.
 - Scripted policies test the machinery, not strategy.

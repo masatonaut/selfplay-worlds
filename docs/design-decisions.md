@@ -174,8 +174,16 @@ Lightweight ADR log. Each entry: **Decision / Why / Alternative / Tradeoff / Sta
 
 ## ADR-22 Player replies with thinking and an answer
 
-- **Decision:** The model replies `<thinking>...</thinking><answer>...</answer>`. For a decision the answer is `{"option": <number>}` (a bare number or a game-shaped JSON object is also read); for talk it is the text to say, or empty for silence. Thinking is recorded as a private entry, visible only to its author.
+- **Decision:** The model replies `<thinking>...</thinking><answer>...</answer>`. For a decision the answer is `{"option": <number>}` (a bare number or a game-shaped JSON object is also read); for talk it is the text to say, or empty for silence.
 - **Why:** Separating reasoning from the answer keeps the answer easy to parse and makes reasoning available for analysis without making it public.
 - **Alternative:** Keep the single JSON object with `message` and `action`.
 - **Tradeoff:** Two model calls per decision when talk is allowed (talk, then answer). The new format has not yet been run against a real model.
+- **Status:** Accepted. Tested with `MockBackend` only. Where thinking goes is ADR-23.
+
+## ADR-23 A Player keeps its own thoughts
+
+- **Decision:** Thinking never leaves the `Player`. Each model call is stored in `thoughts` (a dict keyed by a per-player counter, with step, phase, prompt, reply, thinking, answer and usage). Each piece of thinking is also appended to `thoughtpad`, a text with a word limit (default 400). Only the thoughtpad reaches later prompts. When it is over the limit, one extra model call rewrites it to at most half the limit, keeping what matters for the rest of the game. `ConversationGame` adds `"step"` to observations and otherwise knows nothing about thinking.
+- **Why:** Reasoning is a property of one kind of policy, not of the game. Keeping it in the Player keeps `ConversationGame` and the record about the table only, and gives the model a bounded memory that it maintains itself.
+- **Alternative:** Record thinking as private entries in the conversation record (the first version of ADR-22).
+- **Tradeoff:** Thinking is no longer in `record.json`; it is in each Player's pickle and a readable `<pid>.thoughts.json` beside it. A summary costs an extra model call, and summarizing can drop something that later matters (the full history is kept for analysis).
 - **Status:** Accepted. Tested with `MockBackend` only.

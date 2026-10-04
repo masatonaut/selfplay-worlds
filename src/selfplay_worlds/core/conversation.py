@@ -25,18 +25,16 @@ from selfplay_worlds.core.scheduler import RoundRobinScheduler, Scheduler
 if TYPE_CHECKING:
     from selfplay_worlds.policies.base import Policy
 
-TALK_KINDS = ("message", "thinking")
-
-
 class ConversationRecord:
-    """Everything that happened, in order, for every mode. Saved as JSON.
+    """Everything that happened at the table, in order, for every mode. Saved as JSON.
 
     Entry kinds:
-        phase     a new dialogue phase opened (public)
-        message   table talk (public)
-        thinking  a policy's private reasoning (visible to its author only)
-        action    one answer attempt, accepted or not (public)
+        phase     a new dialogue phase opened
+        message   table talk
+        action    one answer attempt, accepted or not
         event     something the environment made public
+
+    Policies' private reasoning is not here: each policy keeps its own.
     """
 
     def __init__(self, *, on_append: Callable[[dict[str, Any]], None] | None = None) -> None:
@@ -49,7 +47,6 @@ class ConversationRecord:
         kind: str,
         content: Any = None,
         player_id: str | None = None,
-        visibility: str = "public",
         **fields: Any,
     ) -> dict[str, Any]:
         entry = {
@@ -57,16 +54,12 @@ class ConversationRecord:
             "kind": kind,
             "player_id": player_id,
             "content": content,
-            "visibility": visibility,
             **fields,
         }
         self.entries.append(entry)
         if self.on_append is not None:
             self.on_append(entry)
         return entry
-
-    def visible_to(self, *, player_id: str) -> list[dict[str, Any]]:
-        return [e for e in self.entries if e["visibility"] == "public" or e["player_id"] == player_id]
 
     def save(self, *, path: str | Path) -> Path:
         return save_json(path=path, value={"entries": self.entries})
@@ -108,8 +101,9 @@ class ConversationGame:
     # ------------------------------------------------------------------ public
 
     def get_conversation(self, *, player_id: str) -> list[dict[str, Any]]:
-        """The talk this player may see: public messages and its own thinking."""
-        return [e for e in self.record.visible_to(player_id=player_id) if e["kind"] in TALK_KINDS]
+        """The table talk this player may see. All talk is public for now, so ``player_id``
+        only matters once a game has private channels."""
+        return [e for e in self.record.entries if e["kind"] == "message"]
 
     def step(self) -> None:
         """Run the open dialogue phase once: its talk, then its actions."""
@@ -156,7 +150,7 @@ class ConversationGame:
                 return
             if player_id not in current.eligible:
                 continue  # already responded, or no longer allowed to act
-            observation = self.env.get_observation(player_id=player_id)
+            observation = self._observe(player_id)
             if talk and not self._is_forced(observation):
                 for _ in range(current.talk_rounds):
                     self._talk(current, player_id, observation)
@@ -170,7 +164,7 @@ class ConversationGame:
         order = [pid for pid in self.scheduler.order(phase=phase) if pid in phase.eligible]
         for _ in range(phase.talk_rounds):
             for player_id in order:
-                self._talk(phase, player_id, self.env.get_observation(player_id=player_id))
+                self._talk(phase, player_id, self._observe(player_id))
         self._run_in_order(phase, talk=False)
 
     def _run_simultaneous(self, phase: DialoguePhase) -> None:
@@ -179,7 +173,7 @@ class ConversationGame:
         for player_id in self.scheduler.order(phase=phase):
             if player_id not in phase.eligible:
                 continue
-            observation = self.env.get_observation(player_id=player_id)
+            observation = self._observe(player_id)
             forced = self._is_forced(observation)
             if not forced:
                 for _ in range(phase.talk_rounds):
@@ -194,6 +188,10 @@ class ConversationGame:
 
     # ------------------------------------------------------------ one decision
 
+    def _observe(self, player_id: str) -> dict[str, Any]:
+        """The environment's observation, plus ``"step"`` (accepted actions so far) for the policy."""
+        return {**self.env.get_observation(player_id=player_id), "step": self.env.n_steps}
+
     def _is_forced(self, observation: dict[str, Any]) -> bool:
         return self.skip_forced_moves and len(observation.get("options") or []) == 1
 
@@ -201,16 +199,13 @@ class ConversationGame:
         message = self.players[player_id].get_message(
             observation=observation, conversation=self.get_conversation(player_id=player_id)
         )
-        self._record_thinking(phase, player_id)
         if message:
             self._append(phase, kind="message", player_id=player_id, content=message)
 
     def _ask(self, phase: DialoguePhase, player_id: str, observation: dict[str, Any]) -> Any:
-        answer = self.players[player_id].get_action(
+        return self.players[player_id].get_action(
             observation=observation, conversation=self.get_conversation(player_id=player_id)
         )
-        self._record_thinking(phase, player_id)
-        return answer
 
     def _act(
         self,
@@ -280,12 +275,6 @@ class ConversationGame:
         for text in result.public_events:
             self._append(phase, kind="event", content=text)
         return result
-
-    def _record_thinking(self, phase: DialoguePhase, player_id: str) -> None:
-        policy = self.players[player_id]
-        thinking, policy.last_thinking = policy.last_thinking, None
-        if thinking:
-            self._append(phase, kind="thinking", player_id=player_id, content=thinking, visibility="private")
 
     def _append(self, phase: DialoguePhase, **fields: Any) -> dict[str, Any]:
         return self.record.append(
